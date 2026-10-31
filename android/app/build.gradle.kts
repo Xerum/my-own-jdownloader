@@ -1,0 +1,33 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "app.myownjd"
+    compileSdk = 34
+    defaultConfig {
+        applicationId = "app.myownjd"
+        minSdk = 30
+        targetSdk = 34
+        // build.sh passes the minutes since 1970, so every build is newer than the one before and the app can tell when the backend offers a newer one.
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = "1.0.0"
+    }
+    // Release builds (CI) sign with the keystore named by these variables; without them only the debug build (build.sh) is possible.
+    val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
+    if (keystore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(keystore)
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+}
