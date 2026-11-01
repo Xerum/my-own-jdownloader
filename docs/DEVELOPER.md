@@ -33,8 +33,9 @@ access to the MyJDownloader credentials in its environment). There is no sandbox
 ### Where plugins live
 
 All plugins are in one folder, `plugins/` in the repository (`/app/plugins` in the container; override with
-`PLUGINS_DIR`). The folder is mounted into the container by `compose.yaml` and also copied into the image by the
-`Dockerfile`. Each plugin is a sub-folder:
+`PLUGINS_DIR`). The folder is copied into the image by the `Dockerfile` and mounted over it by `compose.dev.yaml`.
+Your own plugins go in a second folder, `/app/plugins-extra` (`EXTRA_PLUGINS_DIR`): they are loaded in addition to the bundled ones, and a plugin with
+the same id replaces the bundled one. Each plugin is a sub-folder:
 
 ```
 plugins/
@@ -294,7 +295,7 @@ one package per browser kind in `EXTENSION_TARGETS` (`chromium`, `firefox`): sam
 - The routes under `/api/extension` and `/api/app` are not counted as a client (`activity.ts`).
 
 **Android app.** `/api/app` returns `{ available, size, built, versionCode, versionName, sha256 }` (the last three from the JSON `build.sh` writes next to the APK),
-`/api/app/my-own-jdownloader.apk` the file. The APK folder is `/app/apk` in the container (`compose.yaml`: `./android/dist`).
+`/api/app/my-own-jdownloader.apk` the file. The APK folder is `/app/apk` in the container (`compose.dev.yaml`: `./android/dist`).
 
 ## Android app
 
@@ -348,4 +349,4 @@ Things to know:
 ## Development
 
 Node and npm only run in containers: `docker compose run --rm dev npm install`, then for example
-`docker compose run --rm dev npm run build`. See `compose.yaml` for the `dev` service.
+`docker compose run --rm dev npm run build`. See `compose.dev.yaml` for the `dev` service; it and the source build are active when `.env` has `COMPOSE_FILE=compose.yaml:compose.dev.yaml` (`compose.yaml` alone is the ready-made image).

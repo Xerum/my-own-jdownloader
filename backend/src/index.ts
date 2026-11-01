@@ -668,7 +668,11 @@ app.get<{ Params: { host: string } }>('/api/icons/:host', async (request, reply)
 // Plugins (see plugins.ts): trusted code from one folder, settings in the data directory.
 const dataDir = process.env.DATA_DIR ?? './data'
 const plugins = new Plugins(
-  process.env.PLUGINS_DIR ?? fileURLToPath(new URL('../../plugins', import.meta.url)),
+  // the bundled plugins, then your own (mounted into the container) which add to them
+  [
+    process.env.PLUGINS_DIR ?? fileURLToPath(new URL('../../plugins', import.meta.url)),
+    process.env.EXTRA_PLUGINS_DIR ?? fileURLToPath(new URL('../../plugins-extra', import.meta.url))
+  ],
   join(dataDir, 'settings.json'),
   join(dataDir, 'plugin-images'),
   app.log
@@ -943,7 +947,7 @@ app.get('/api/extension/firefox/extension.xpi', async (_request, reply) => {
 })
 app.get('/api/extension/firefox/updates.json', async (_request, reply) => firefox?.updateManifest() ?? reply.code(404).send(noPackage))
 
-// The Android app: the APK is not part of the image but mounted into /app/apk (compose.yaml, built by android/build.sh); none there, none offered.
+// The Android app: the APK is not part of the image but mounted into /app/apk (compose.dev.yaml, built by android/build.sh); none there, none offered.
 const apkFile = fileURLToPath(new URL('../../apk/my-own-jdownloader.apk', import.meta.url))
 app.get('/api/app', async () => {
   const info = existsSync(apkFile) ? statSync(apkFile) : null

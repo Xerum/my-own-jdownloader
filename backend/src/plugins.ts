@@ -3,7 +3,8 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-// Plugins live in one folder: <dir>/<id>/plugin.json (manifest) and <dir>/<id>/index.js (ES module).
+// Plugins live in one or more folders: <dir>/<id>/plugin.json (manifest) and <dir>/<id>/index.js (ES module).
+// A later folder adds to the earlier ones; a plugin with the same id replaces the earlier one.
 // They are trusted code that runs inside the server process: only put plugins there that you trust.
 
 export type SettingValue = string | boolean
@@ -52,6 +53,7 @@ interface PluginModule {
 
 interface Loaded {
   manifest: Manifest
+  dir: string
   module?: PluginModule
   loadError?: string
   lastError?: string
@@ -103,7 +105,7 @@ export class Plugins {
   private posterUsers = new Map<string, Set<string>>()
 
   constructor(
-    private readonly dir: string,
+    private readonly dirs: string[],
     private readonly settingsFile: string,
     private readonly imageDir: string,
     private readonly log: { info: (m: string) => void; warn: (m: string) => void }
@@ -121,25 +123,27 @@ export class Plugins {
     } catch {
       /* no posters cached yet */
     }
-    let entries: string[] = []
-    try {
-      entries = (await readdir(this.dir, { withFileTypes: true })).filter((e) => e.isDirectory() && /^[a-z0-9][a-z0-9-]*$/.test(e.name)).map((e) => e.name).sort()
-    } catch {
-      this.log.info(`No plugins folder at ${this.dir}`)
-    }
-    for (const id of entries) {
+    for (const dir of this.dirs) {
+      let entries: string[] = []
       try {
-        const manifest = parseManifest(id, JSON.parse(await readFile(join(this.dir, id, 'plugin.json'), 'utf8')))
-        const loaded: Loaded = { manifest }
-        this.plugins.set(id, loaded)
+        entries = (await readdir(dir, { withFileTypes: true })).filter((e) => e.isDirectory() && /^[a-z0-9][a-z0-9-]*$/.test(e.name)).map((e) => e.name).sort()
+      } catch {
+        this.log.info(`No plugins folder at ${dir}`)
+      }
+      for (const id of entries) {
         try {
-          loaded.module = (await import(pathToFileURL(join(this.dir, id, 'index.js')).href)).default ?? {}
+          const manifest = parseManifest(id, JSON.parse(await readFile(join(dir, id, 'plugin.json'), 'utf8')))
+          const loaded: Loaded = { manifest, dir }
+          this.plugins.set(id, loaded)
+          try {
+            loaded.module = (await import(pathToFileURL(join(dir, id, 'index.js')).href)).default ?? {}
+          } catch (e) {
+            loaded.loadError = `index.js: ${e instanceof Error ? e.message : e}`
+            this.log.warn(`Plugin "${id}" could not be loaded: ${loaded.loadError}`)
+          }
         } catch (e) {
-          loaded.loadError = `index.js: ${e instanceof Error ? e.message : e}`
-          this.log.warn(`Plugin "${id}" could not be loaded: ${loaded.loadError}`)
+          this.log.warn(`Plugin folder "${id}" in ${dir} skipped: ${e instanceof Error ? e.message : e}`)
         }
-      } catch (e) {
-        this.log.warn(`Plugin folder "${id}" skipped: ${e instanceof Error ? e.message : e}`)
       }
     }
     this.log.info(`Plugins: ${[...this.plugins.keys()].join(', ') || 'none'}`)
@@ -232,10 +236,11 @@ export class Plugins {
 
   // The plugin's UI module (served to the browser), only while the plugin is installed.
   async uiSource(id: string): Promise<string | null> {
-    const file = this.plugins.get(id)?.manifest.ui
-    if (!file) return null
+    const loaded = this.plugins.get(id)
+    const file = loaded?.manifest.ui
+    if (!loaded || !file) return null
     try {
-      return await readFile(join(this.dir, id, file), 'utf8')
+      return await readFile(join(loaded.dir, id, file), 'utf8')
     } catch {
       return null
     }

@@ -387,12 +387,13 @@
                 <div>
                     <div class="eyebrow">Quick start</div>
                     <h2 class="h2">
-                        Clone it, fill in
-                        <span class="mono env">.env</span>
+                        Two files, one command.
                         <br>
-                        start it.
+                        Fill in
+                        <span class="mono env">.env</span>
+                        and go.
                     </h2>
-                    <p data-rv>You need Docker with Compose and a MyJDownloader account with at least one connected JDownloader. Set a UI password, and put the app behind HTTPS if it is reachable from outside your network.</p>
+                    <p data-rv>The ready-made image is pulled for you, nothing to build. You need Docker with Compose and a MyJDownloader account with at least one connected JDownloader. Set a UI password, and put the app behind HTTPS if it is reachable from outside your network.</p>
                     <a class="lnk" href="https://github.com/bennyborn/my-own-jdownloader#quick-start">
                         Read the full guide on GitHub
                         <svg class="i" aria-hidden="true"><use href="#i-arrow-right" /></svg>
@@ -403,10 +404,11 @@
                         <svg class="i" aria-hidden="true"><use href="#i-terminal" /></svg>
                         shell
                     </header>
-                    <pre><span class="p">$</span> git clone https://github.com/bennyborn/my-own-jdownloader
-<span class="p">$</span> cd my-own-jdownloader
-<span class="p">$</span> cp .env.example .env
-<span class="p">$</span> docker compose up -d --build app</pre>
+                    <pre><span class="p">$</span> mkdir my-own-jdownloader &amp;&amp; cd my-own-jdownloader
+<span class="p">$</span> curl -fLO https://raw.githubusercontent.com/bennyborn/my-own-jdownloader/master/compose.yaml
+<span class="p">$</span> curl -fL https://raw.githubusercontent.com/bennyborn/my-own-jdownloader/master/.env.example -o .env
+<span class="p">$</span> nano .env   <span class="p"># your MyJDownloader login + UI_PASSWORD</span>
+<span class="p">$</span> docker compose up -d</pre>
                 </div>
             </div>
         </section>

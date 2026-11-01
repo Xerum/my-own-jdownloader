@@ -64,11 +64,18 @@ anywhere (a NAS, a server, your PC); nothing has to be installed next to them.
 You need Docker with Compose and a MyJDownloader account with at least one connected JDownloader.
 
 ```sh
-git clone <this repository>
-cd my-own-jdownloader
-cp .env.example .env     # then fill in at least MYJD_EMAIL, MYJD_PASSWORD and UI_PASSWORD
-docker compose up -d --build app
+mkdir my-own-jdownloader && cd my-own-jdownloader
+curl -fLO https://raw.githubusercontent.com/bennyborn/my-own-jdownloader/master/compose.yaml
+curl -fL https://raw.githubusercontent.com/bennyborn/my-own-jdownloader/master/.env.example -o .env
+# fill in at least MYJD_EMAIL, MYJD_PASSWORD and UI_PASSWORD in .env
+docker compose up -d
 ```
+
+That pulls the ready-made image `ghcr.io/bennyborn/my-own-jdownloader` (the bundled plugins are inside). It follows `latest`;
+put `APP_VERSION=1.2.3` in `.env` to pin a release, and `docker compose pull && docker compose up -d` to update.
+
+Own plugins: put them in a folder `plugins/` next to `compose.yaml` (with a `package.json` containing `{ "type": "module" }`, see
+[DEVELOPER.md](docs/DEVELOPER.md)) and enable the `./plugins:/app/plugins-extra:ro` line in `compose.yaml`. They are added to the bundled ones.
 
 Open `http://<host>:3000` (the port is `APP_PORT` in `.env`) and log in with any username and `UI_PASSWORD`.
 
@@ -116,7 +123,8 @@ Both are offered by the app itself under **Settings > Browser extension / App** 
 
 - **Extension:** download the ZIP, load it unpacked in Chromium, and the options page can keep it up to date afterwards.
   Firefox needs a signed package; the backend can have one signed with your own AMO keys (`PUBLIC_URL` must be an https address).
-- **Android app:** build the APK once with `android/build.sh` (everything runs in a container), then install it from the settings page.
+- **Android app:** the APK is not part of the image. Download `my-own-jdownloader.apk` from the latest GitHub release and install it, or build it
+  yourself with `android/build.sh` (everything runs in a container) and mount it as in `compose.dev.yaml` to offer it on the settings page.
 ## MCP
 
 ```sh
@@ -128,7 +136,8 @@ Read tools list devices, downloads, linkgrabber, accounts, captchas and settings
 
 ## Development
 
-Node and npm only run in containers:
+Clone the repository and put `COMPOSE_FILE=compose.yaml:compose.dev.yaml` in `.env`: `compose.dev.yaml` builds the image from source,
+mounts `plugins/` and the APK folder and adds the `dev` service. Node and npm only run in containers:
 
 ```sh
 docker compose run --rm dev npm install

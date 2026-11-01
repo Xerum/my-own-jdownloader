@@ -1,6 +1,8 @@
+# The ready-made image; this file is all you need next to your .env (see the README).
+# Development (build from source, dev tooling, mounted plugins and APK) is in compose.dev.yaml.
 services:
   app:
-    build: .
+    image: ghcr.io/bennyborn/my-own-jdownloader:${APP_VERSION:-latest}
     ports:
       - "${APP_PORT:?set APP_PORT in .env}:3000"
     env_file: .env
@@ -9,32 +11,8 @@ services:
     restart: unless-stopped
     volumes:
       - icon_cache:/app/data
-      # Plugins: add your own folders here (restart to pick them up)
-      - ./plugins:/app/plugins:ro
-      # The Android app (android/build.sh puts the APK there); offered for download in the settings
-      - ./android/dist:/app/apk:ro
-
-  # Development tooling: all npm/node usage happens in this container, never on the host.
-  # Usage: docker compose run --rm dev npm install
-  dev:
-    profiles: ["dev"]
-    image: node:22-alpine
-    working_dir: /app
-    user: "${UID:-1000}:${GID:-1000}"
-    env_file: .env
-    environment:
-      HOME: /tmp
-      PORT: 3000
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - backend_node_modules:/app/backend/node_modules
-      - frontend_node_modules:/app/frontend/node_modules
-    ports:
-      - "${APP_PORT:?set APP_PORT in .env}:3000"
+      # Your own plugins (optional, restart to pick them up): they add to the bundled ones, see the README.
+      # - ./plugins:/app/plugins-extra:ro
 
 volumes:
   icon_cache:
-  node_modules:
-  backend_node_modules:
-  frontend_node_modules:
