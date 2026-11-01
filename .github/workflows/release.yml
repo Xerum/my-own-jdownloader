@@ -1,4 +1,5 @@
 # A release is made by pushing a tag: v<version of extension/manifest.json>, e.g. v1.0.0.
+# The same version must be in android/app/build.gradle.kts (versionName) and backend/src/mcp.ts; the first step checks it.
 # Builds the Chrome ZIP, the Firefox XPI (signed by Mozilla, unlisted) and the Android APK, and attaches them to the GitHub release.
 # compat.json says which backend level this release needs (see API_LEVEL in backend/src/index.ts); the release carries it as release.json.
 # Secrets (repository settings > Environments > release): AMO_JWT_ISSUER, AMO_JWT_SECRET, ANDROID_KEYSTORE_BASE64,
@@ -25,6 +26,8 @@ jobs:
         run: |
           version=$(node -p "require('./extension/manifest.json').version")
           [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "Tag $GITHUB_REF_NAME does not match extension version $version"; exit 1; }
+          grep -q "versionName = \"$version\"" android/app/build.gradle.kts || { echo "android/app/build.gradle.kts: versionName is not $version"; exit 1; }
+          grep -q "version: '$version'" backend/src/mcp.ts || { echo "backend/src/mcp.ts: server version is not $version"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build the extension packages

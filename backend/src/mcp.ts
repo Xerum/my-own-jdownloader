@@ -130,7 +130,7 @@ const resolve = (registry: DeviceRegistry, given?: string): DeviceContext => {
 const buildServer = ({ registry, log, debug }: McpOptions, allowWrite: boolean, catalog?: McpTool[], caller?: McpCaller): McpServer => {
   let write = false
   const server = new McpServer(
-    { name: 'my-own-jdownloader', version: '1.0.0' },
+    { name: 'my-own-jdownloader', version: '1.0.1' },
     {
       instructions:
         'Controls a JDownloader. The JDownloader has hundreds of settings: find them with search_settings (by topic, e.g. "reconnect", "max simultaneous downloads", "extraction"), never try to list all. ' +
