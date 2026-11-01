@@ -285,7 +285,7 @@ one package per browser kind in `EXTENSION_TARGETS` (`chromium`, `firefox`): sam
 | `GET /api/extension/:target/extension.zip` | ZIP for the first installation (not Firefox) |
 | `GET /api/extension/firefox/extension.xpi`, `…/updates.json` | The package signed by Mozilla, and what Firefox asks for updates |
 
-- **Raise `version` in `extension/manifest.json` with every change.** The self-update compares it, and AMO signs a version only once. Rebuild the app
+- **Raise the version with every change** (`docker compose run --rm dev node scripts/set-version.mjs <version>`: it writes the file `VERSION` and the manifest). The self-update compares it, and AMO signs a version only once. Rebuild the app
   container afterwards (the extension is part of the image).
 - Self-update (`extension/update.js`): the options page writes the changed files into the folder the extension is loaded from (File System Access API,
   folder picked once, kept in IndexedDB) and reloads it. Chromium only.

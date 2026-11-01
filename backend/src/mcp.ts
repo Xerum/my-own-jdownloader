@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { HttpError, type DeviceContext, type DeviceRegistry } from './devices.js'
 import { McpLog, type McpCaller } from './mcplog.js'
 import type { ConfigEntry, ConfigGroup } from './jdconfig.js'
+import { VERSION } from './version.js'
 
 // An MCP server (Streamable HTTP, stateless) on /mcp: the same services as the web page, for an assistant.
 // Its main use is the JDownloader settings, which are too many to browse: they are searched, not listed.
@@ -130,7 +131,7 @@ const resolve = (registry: DeviceRegistry, given?: string): DeviceContext => {
 const buildServer = ({ registry, log, debug }: McpOptions, allowWrite: boolean, catalog?: McpTool[], caller?: McpCaller): McpServer => {
   let write = false
   const server = new McpServer(
-    { name: 'my-own-jdownloader', version: '1.0.1' },
+    { name: 'my-own-jdownloader', version: VERSION },
     {
       instructions:
         'Controls a JDownloader. The JDownloader has hundreds of settings: find them with search_settings (by topic, e.g. "reconnect", "max simultaneous downloads", "extraction"), never try to list all. ' +

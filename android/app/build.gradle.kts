@@ -12,7 +12,8 @@ android {
         targetSdk = 34
         // build.sh passes the minutes since 1970, so every build is newer than the one before and the app can tell when the backend offers a newer one.
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = "1.0.1"
+        // build.sh and the release workflow pass the version of the project (the file VERSION at the repository root).
+        versionName = (project.findProperty("versionName") as String?) ?: "dev"
     }
     // Release builds (CI) sign with the keystore named by these variables; without them only the debug build (build.sh) is possible.
     val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
