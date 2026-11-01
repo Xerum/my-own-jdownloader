@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import LoadingState from './LoadingState.vue'
-import { Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+import { Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { settingsDevice } from './devices'
 import { addLogin, loadLogins, logins, loginsError, loginsState, removeLogins, updateLogin, type BasicAuth, type BasicAuthType } from './basicAuth'
 import { askConfirm } from './confirm'

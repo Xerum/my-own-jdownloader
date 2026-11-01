@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, BellOff } from 'lucide-vue-next'
+import { Bell, BellOff } from '@lucide/vue'
 import { computed } from 'vue'
 import { inApp } from './appBridge'
 import { showInfo } from './confirm'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpCircle, Check, Layers, Server, ServerOff, X } from 'lucide-vue-next'
+import { ArrowUpCircle, Check, Layers, Server, ServerOff, X } from '@lucide/vue'
 import { ALL, anyUpdate, devices, select, showingAll, currentDevice, updates } from './devices'
 
 // Phone variant of the device switcher: opened from the "Devices" tab of the bottom bar.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toneIcon } from './iconTone'
 import { multiple, withDevice } from './devices'
-import { ChevronDown, Clock, RefreshCw } from 'lucide-vue-next'
+import { ChevronDown, Clock, RefreshCw } from '@lucide/vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatCountdown } from './format'
 import { showError } from './toast'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Clock, ShieldCheck } from 'lucide-vue-next'
+import { Clock, ShieldCheck } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { extensionActive, inApp, solveInApp } from './appBridge'
 import { formatCountdown } from './format'

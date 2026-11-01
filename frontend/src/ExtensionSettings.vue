@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { ChevronDown, Download } from 'lucide-vue-next'
+import { ChevronDown, Download } from '@lucide/vue'
 import JdSettings from './JdSettings.vue'
 import LoadingState from './LoadingState.vue'
 import { settingsDevice } from './devices'

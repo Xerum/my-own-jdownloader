@@ -3,6 +3,7 @@
   "private": true,
   "license": "MIT",
   "workspaces": ["backend", "frontend"],
+  "overrides": { "glob": "^14.0.3" },
   "scripts": {
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { withDevice } from './devices'
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { actionError, addVariants, choosingVariants, switchVariant } from './itemActions'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Moon, Power, RefreshCw, RotateCw, Snowflake, X } from 'lucide-vue-next'
+import { Moon, Power, RefreshCw, RotateCw, Snowflake, X } from '@lucide/vue'
 import LoadingState from './LoadingState.vue'
 import { devices, loadUpdates, settingsDevice, withDevice } from './devices'
 import { askConfirm } from './confirm'

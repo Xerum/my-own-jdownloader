@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileUp, FolderPen, List, Plus, X } from 'lucide-vue-next'
+import { FileUp, FolderPen, List, Plus, X } from '@lucide/vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import DevicePicker from './DevicePicker.vue'
 import { currentDevice, devices, multiple, showingAll, withDevice } from './devices'

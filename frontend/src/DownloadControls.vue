@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpCircle, Loader, Pause, Play, Square } from 'lucide-vue-next'
+import { ArrowUpCircle, Loader, Pause, Play, Square } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { askConfirm } from './confirm'
 import { devices, updates, withDevice } from './devices'

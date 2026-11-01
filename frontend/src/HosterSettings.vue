@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronRight, Search } from 'lucide-vue-next'
+import { ChevronRight, Search } from '@lucide/vue'
 import { toneIcon } from './iconTone'
 import { settingsDevice } from './devices'
 import { fetchPluginGroup, loadPluginConfigs, pluginConfigs, pluginConfigsError, pluginConfigsState, type ConfigGroup, type PluginConfig } from './jdconfig'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TriangleAlert } from 'lucide-vue-next'
+import { TriangleAlert } from '@lucide/vue'
 import { nextTick, ref, watch } from 'vue'
 import { answerConfirm, confirmState } from './confirm'
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader } from 'lucide-vue-next'
+import { Loader } from '@lucide/vue'
 
 // The placeholder while a page or section loads: a turning icon with the text underneath, in the style of the "empty" pages.
 // page: the whole main area, section: one section of the settings, inline: inside a block of its own.

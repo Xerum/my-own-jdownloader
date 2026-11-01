@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArchiveRestore, BrushCleaning, CircleCheck, Flag, KeyRound, Lock, RotateCcw, SkipForward, Check, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Folder, OctagonPause, Layers, Link2, Merge, PackagePlus, Pencil, Play, Power, PowerOff, ArrowDownAZ, Shuffle, Split, Square, Trash2 } from 'lucide-vue-next'
+import { ArchiveRestore, BrushCleaning, CircleCheck, Flag, KeyRound, Lock, RotateCcw, SkipForward, Check, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Folder, OctagonPause, Layers, Link2, Merge, PackagePlus, Pencil, Play, Power, PowerOff, ArrowDownAZ, Shuffle, Split, Square, Trash2 } from '@lucide/vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { menuEntryOn as on } from './menuConfig'
 import { addArchivePassword, isMulti, checkOnline, cleanupItem, closeMenu, resumeItem, setDownloadPassword, setPriority, menu, revealItem, scrollIgnored, menuArchives, menuArchivesPending, mergePackages, moveToDownloads, moveToEdge, removeItem, resetItem, startDownload, startFolder, startExtraction, startRename, toggleStopMark, toggleArchiveSetting, interleaveHosts, sortLinks, splitBlocked, splitByHost, startShowLinks, startVariants, toggleEnabled } from './itemActions'

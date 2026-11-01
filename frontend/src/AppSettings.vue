@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 import { androidBridge } from './appBridge'
 import { showError, showSuccess } from './toast'

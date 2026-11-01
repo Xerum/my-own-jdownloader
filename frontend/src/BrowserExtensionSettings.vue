@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle2, Download, Loader } from 'lucide-vue-next'
+import { CheckCircle2, Download, Loader } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { inApp } from './appBridge'
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleAlert, CircleCheck, Loader } from 'lucide-vue-next'
+import { CircleAlert, CircleCheck, Loader } from '@lucide/vue'
 import { dismissToast, progress, toasts } from './toast'
 import { updateStatus } from './updateWatch'
 </script>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRaw, watch } from 'vue'
 import { askConfirm } from './confirm'
-import { ChevronDown, ChevronRight, Download, GripVertical, Plus, Trash2, Upload } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Download, GripVertical, Plus, Trash2, Upload } from '@lucide/vue'
 
 // Editor for the JDownloader's "Custom proxy list" (InternetConnectionSettings.CustomProxyList). It works on a
 // copy and sends the whole list on "Save"; fields it does not know stay as they are.

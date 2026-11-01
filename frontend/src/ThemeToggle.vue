@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Moon, Sun } from 'lucide-vue-next'
+import { Moon, Sun } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 
 const dark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches)

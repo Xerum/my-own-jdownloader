@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toneIcon } from './iconTone'
 import { withDevice } from './devices'
-import { Check, ChevronRight, Clock, Download, Hourglass, Package, PackageOpen, SkipForward, TriangleAlert, Folder, Gauge, GripVertical, HardDrive, Link2, PowerOff, OctagonPause, Zap } from 'lucide-vue-next'
+import { Check, ChevronRight, Clock, Download, Hourglass, Package, PackageOpen, SkipForward, TriangleAlert, Folder, Gauge, GripVertical, HardDrive, Link2, PowerOff, OctagonPause, Zap } from '@lucide/vue'
 import { vMarquee } from './marquee'
 import { expandedDownloads, linkAnchor, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
 import { showError } from './toast'

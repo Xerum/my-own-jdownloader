@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpCircle, Check, ChevronDown, Layers, Server, ServerOff } from 'lucide-vue-next'
+import { ArrowUpCircle, Check, ChevronDown, Layers, Server, ServerOff } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ALL, anyUpdate, devices, updates } from './devices'
 

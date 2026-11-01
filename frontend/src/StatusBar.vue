@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inApp, solveInApp } from './appBridge'
 import { withDevice } from './devices'
-import { Clock, Download, Link2, Package, Plus, ShieldCheck, Snail } from 'lucide-vue-next'
+import { Clock, Download, Link2, Package, Plus, ShieldCheck, Snail } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatBytes, formatLongEta, formatSpeed } from './format'
 import SpeedGraph, { type SpeedSample } from './SpeedGraph.vue'

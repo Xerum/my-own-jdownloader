@@ -1,5 +1,5 @@
 import { ref, type Component } from 'vue'
-import { Bell, Cog, Lock, ShieldCheck, CreditCard, Download, KeyRound, Globe, Link2, Network, Plug, Puzzle, RefreshCw, SquareMenu, LockKeyhole, Info, Blocks, PackagePlus } from 'lucide-vue-next'
+import { Bell, Cog, Lock, ShieldCheck, CreditCard, Download, KeyRound, Globe, Link2, Network, Plug, Puzzle, RefreshCw, SquareMenu, LockKeyhole, Info, Blocks, PackagePlus } from '@lucide/vue'
 import { inApp } from './appBridge'
 import { parseHash } from './devices'
 

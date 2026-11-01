@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { withDevice } from './devices'
-import { Check, Copy, X } from 'lucide-vue-next'
+import { Check, Copy, X } from '@lucide/vue'
 import { nextTick, ref, watch } from 'vue'
 import { showingLinks } from './itemActions'
 

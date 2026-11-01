@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { ChevronDown, Link2, RotateCcw, Search } from 'lucide-vue-next'
+import { ChevronDown, Link2, RotateCcw, Search } from '@lucide/vue'
 import { settingsDevice } from './devices'
 import { phone } from './settings'
 import { jdConfig, jdConfigError, jdConfigState, loadJdConfig, resetJdSetting, saveJdSetting, type ConfigEntry, type ConfigGroup } from './jdconfig'

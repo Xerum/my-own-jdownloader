@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight, HardDrive, Monitor, ServerOff, Smartphone } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, HardDrive, Monitor, ServerOff, Smartphone } from '@lucide/vue'
 import { deviceName, devices, pickSettingsDevice, settingsDevice, showingAll } from './devices'
 import { phone, SECTIONS, settingsOpen, settingsSection, type SettingsSection } from './settings'
 import ContextMenuSettings from './ContextMenuSettings.vue'

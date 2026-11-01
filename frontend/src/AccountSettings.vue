@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import LoadingState from './LoadingState.vue'
-import { Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next'
+import { Pencil, Plus, RefreshCw, Trash2, X } from '@lucide/vue'
 import { toneIcon } from './iconTone'
 import { settingsDevice } from './devices'
 import { accounts, accountsError, accountsState, addAccount, loadAccounts, loadPremiumHosters, premiumHosters, refreshAccounts, removeAccounts, setAccountsEnabled, setCredentials, type Account } from './accounts'

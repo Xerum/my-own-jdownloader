@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp } from '@lucide/vue'
 import { computed } from 'vue'
 
 // A small arrow for a priority other than the default: up for higher, down for lower (two arrows for the extremes).
