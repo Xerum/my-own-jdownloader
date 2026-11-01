@@ -1,9 +1,9 @@
-# The landing page (site/) on GitHub Pages. Needs Settings > Pages > Source: GitHub Actions; the domain is in site/CNAME.
+# The landing page (site/) on GitHub Pages (redeployed when VERSION changes too: the page shows it). Needs Settings > Pages > Source: GitHub Actions; the domain is in site/CNAME.
 name: Pages
 on:
   push:
     branches: [master]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'VERSION', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      # The page shows the version of the project: __VERSION__ in site/index.html becomes the content of the file VERSION.
+      - name: Put the version into the page
+        run: sed -i "s/__VERSION__/$(cat VERSION)/g" site/index.html
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
