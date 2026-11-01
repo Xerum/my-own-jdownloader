@@ -2,3 +2,14 @@ node_modules
 dist
 .env
 .git
+# not needed to build or run the app
+android
+site
+docs
+test-devices
+scripts
+.github
+data
+*.md
+compose*.yaml
+.env.example
