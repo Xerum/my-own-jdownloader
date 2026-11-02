@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, type Component } from 'vue'
 
 export interface PromptOptions {
   title: string
@@ -8,7 +8,7 @@ export interface PromptOptions {
   placeholder?: string
   initial?: string
   allowEmpty?: boolean
-  choices?: { value: string; label: string }[]
+  choices?: { value: string; label: string; icon?: Component; accent?: boolean }[]
 }
 
 export const promptState = ref<(PromptOptions & { value: string; resolve: (value: string | null) => void }) | null>(null)

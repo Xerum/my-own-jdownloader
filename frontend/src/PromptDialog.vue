@@ -18,7 +18,9 @@ watch(promptState, async (state) => {
       <p v-if="promptState.message">{{ promptState.message }}</p>
       <div v-if="promptState.choices" class="choices" role="radiogroup">
         <label v-for="c in promptState.choices" :key="c.value" class="choice">
-          <input v-model="promptState.value" type="radio" :value="c.value" /> {{ c.label }}
+          <input v-model="promptState.value" type="radio" :value="c.value" />
+          <component :is="c.icon" v-if="c.icon" :size="16" class="icon" :class="{ accent: c.accent }" aria-hidden="true" />
+          {{ c.label }}
         </label>
       </div>
       <input v-else ref="field" v-model="promptState.value" type="text" spellcheck="false" autocomplete="off" :placeholder="promptState.placeholder" />
@@ -34,11 +36,13 @@ watch(promptState, async (state) => {
 .overlay { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(var(--overlay-blur)); -webkit-backdrop-filter: blur(var(--overlay-blur)); }
 .dialog { display: grid; gap: 14px; width: min(440px, 100%); padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); }
 h3 { margin: 0; font-size: 1rem; }
-p { margin: 0; color: var(--muted); line-height: 1.5; white-space: pre-line; }
+p { margin: 0; color: var(--muted); overflow-wrap: anywhere; line-height: 1.5; white-space: pre-line; }
 input[type='text'] { box-sizing: border-box; width: 100%; padding: 9px 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font: inherit; }
 input[type='text']:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .choices { display: grid; gap: 4px; }
 .choice { display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; }
+.icon { flex: none; color: var(--muted); }
+.icon.accent { color: var(--accent); }
 .actions { display: flex; justify-content: flex-end; gap: 10px; }
 button { padding: 7px 16px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font: inherit; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }

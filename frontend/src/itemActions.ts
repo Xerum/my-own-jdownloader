@@ -1,4 +1,5 @@
 import { ref, shallowReactive } from 'vue'
+import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Minus } from '@lucide/vue'
 import { askConfirm } from './confirm'
 import { askPrompt } from './prompt'
 import { progress, showSuccess } from './toast'
@@ -454,14 +455,15 @@ export const resumeItem = async (t: Target) => {
   }
 }
 
+// The arrows are those of PriorityMark (the marks in the lists); the highlighted ones are above the default.
 const PRIORITIES = [
-  { value: 'HIGHEST', label: 'Highest' },
-  { value: 'HIGHER', label: 'Higher' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'DEFAULT', label: 'Default' },
-  { value: 'LOW', label: 'Low' },
-  { value: 'LOWER', label: 'Lower' },
-  { value: 'LOWEST', label: 'Lowest' }
+  { value: 'HIGHEST', label: 'Highest', icon: ChevronsUp, accent: true },
+  { value: 'HIGHER', label: 'Higher', icon: ChevronsUp, accent: true },
+  { value: 'HIGH', label: 'High', icon: ChevronUp, accent: true },
+  { value: 'DEFAULT', label: 'Default', icon: Minus },
+  { value: 'LOW', label: 'Low', icon: ChevronDown },
+  { value: 'LOWER', label: 'Lower', icon: ChevronsDown },
+  { value: 'LOWEST', label: 'Lowest', icon: ChevronsDown }
 ]
 export const setPriority = async (t: Target) => {
   closeMenu()
