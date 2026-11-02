@@ -6,7 +6,7 @@ import { vMarquee } from './marquee'
 import { expandedDownloads, linkAnchor, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
 import { showError } from './toast'
 import PriorityMark from './PriorityMark.vue'
-import { clearHovered, changeTick, menuOn, openMenu, setHovered, setMarked, type Target } from './itemActions'
+import { clearHovered, changeTick, menuOn, openMenu, setHovered, setMarked, type LinkDetails, type Target } from './itemActions'
 import { computed, onUnmounted, reactive, ref, watch, watchEffect } from 'vue'
 import PackageSlot from './PackageSlot.vue'
 import { formatBytes, formatLongEta, formatSpeed } from './format'
@@ -154,6 +154,19 @@ const pkgTarget = computed<Target>(() => ({
   hostCount: props.pkg.hosts.length,
   mergeIds: picked.value && selectedDownloadPackages.value.size > 1 ? [...selectedDownloadPackages.value] : undefined
 }))
+// The columns the phone layout drops from the link row; shown in the context menu there.
+const linkDetails = (id: number): LinkDetails | null => {
+  const l = links.value?.find((x) => x.uuid === id)
+  if (!l?.running) return null // nothing to add for a link that is not running
+  const badge = linkBadge(l)
+  const items: LinkDetails['items'] = []
+  items.push(
+    { icon: Gauge, label: 'Speed', value: formatSpeed(l.speed) },
+    { icon: Clock, label: 'Time left', value: formatLongEta(l.eta ?? null) },
+    { icon: HardDrive, label: 'Size', value: `${formatBytes(l.bytesLoaded)} / ${formatBytes(l.bytesTotal)}` }
+  )
+  return { status: { kind: badge.kind, text: badge.kind === 'running' || !badge.detail ? badge.text : `${badge.text} · ${badge.detail}` }, items }
+}
 const linkTarget = (l: DownloadLink): Target => ({
   area: 'downloads',
   device: props.device,
@@ -166,6 +179,7 @@ const linkTarget = (l: DownloadLink): Target => ({
   stopMarked: l.stopMarked,
   priority: l.priority,
   started: l.bytesLoaded > 0,
+  details: () => linkDetails(l.uuid),
   selectedLinkIds: selectedDownloadLinks.value.has(l.uuid) && selectedDownloadLinks.value.size > 1 ? [...selectedDownloadLinks.value] : undefined
 })
 

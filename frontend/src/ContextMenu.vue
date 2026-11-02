@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ArchiveRestore, BrushCleaning, CircleCheck, Flag, KeyRound, Lock, RotateCcw, SkipForward, Check, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Folder, OctagonPause, Layers, Link2, Merge, PackagePlus, Pencil, Play, Power, PowerOff, ArrowDownAZ, Shuffle, Split, Square, Trash2 } from '@lucide/vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import PriorityMark from './PriorityMark.vue'
 import { menuEntryOn as on } from './menuConfig'
 import { addArchivePassword, isMulti, checkOnline, cleanupItem, closeMenu, resumeItem, setDownloadPassword, setPriority, menu, revealItem, scrollIgnored, menuArchives, menuArchivesPending, mergePackages, moveToDownloads, moveToEdge, removeItem, resetItem, startDownload, startFolder, startExtraction, startRename, toggleStopMark, toggleArchiveSetting, interleaveHosts, sortLinks, splitBlocked, splitByHost, startShowLinks, startVariants, toggleEnabled } from './itemActions'
 
 const target = computed(() => menu.value?.target)
+// Phone: what the list hides (status, speed, size, ...) for a single download, live.
+const details = computed(() => (target.value?.selectedLinkIds ? null : (target.value?.details?.() ?? null)))
+const statusTone = (kind: string) => (kind === 'running' ? 'on' : ['finished', 'extracted'].includes(kind) ? 'ok' : ['idle-error', 'extract-failed'].includes(kind) ? 'err' : '')
 // Starting only makes sense for what is waiting: not for a running or a finished download (JD has no per-download pause).
 // A running download is stopped by disabling it: JD aborts it then. That entry takes the place of "Start".
 const stopsRunning = computed(() => target.value?.area === 'downloads' && target.value.running === true && target.value.enabled)
@@ -78,7 +82,7 @@ onUnmounted(() => {
 <template>
   <div v-if="menu && target" class="backdrop" :class="{ sheet }" @click="closeMenu" @contextmenu.prevent="closeMenu">
     <ul ref="menuEl" class="menu" :class="{ sheet }" :style="sheet ? undefined : position" role="menu" @click.stop @contextmenu.prevent.stop>
-      <li v-if="sheet" class="title" role="presentation">{{ target.name }}</li>
+      <li v-if="sheet" class="title" role="presentation"><PriorityMark :priority="target.priority" :size="14" />{{ target.name }}</li>
       <li v-if="stopsRunning">
         <button type="button" role="menuitem" @click="toggleEnabled(target)">
           <Square :size="15" /> Disable / Stop{{ target.selectedLinkIds ? ` ${target.selectedLinkIds.length} selected` : '' }}
@@ -224,6 +228,14 @@ onUnmounted(() => {
           <Trash2 :size="15" /> Remove… <kbd>Del</kbd>
         </button>
       </li>
+      <li v-if="sheet && details" class="details" role="presentation">
+        <div class="status" :class="statusTone(details.status.kind)">{{ details.status.text }}</div>
+        <div class="grid">
+          <span v-for="item in details.items" :key="item.label" class="item" :title="item.label">
+            <component :is="item.icon" :size="15" :aria-label="item.label" /><b>{{ item.value }}</b>
+          </span>
+        </div>
+      </li>
     </ul>
   </div>
 </template>
@@ -239,6 +251,16 @@ button.danger:hover:not(:disabled), button.danger:active:not(:disabled) { color:
 .sep { height: 1px; margin: 4px 6px; background: var(--border); }
 .box { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 15px; height: 15px; border: 1px solid var(--border); border-radius: 4px; }
 .title { padding: 6px 10px 10px; color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Pinned to the bottom edge of the sheet (the entries scroll above it), over the padding of the sheet. */
+.details { position: sticky; bottom: calc(-10px - env(safe-area-inset-bottom)); margin: 6px -8px calc(-10px - env(safe-area-inset-bottom)); padding: 8px 18px calc(10px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border); font-size: 0.85rem; }
+.details .status { margin-bottom: 8px; font-weight: 600; color: var(--muted); overflow-wrap: anywhere; }
+.details .status.on { color: var(--accent); }
+.details .status.ok { color: var(--ok); }
+.details .status.err { color: #d14343; }
+.details .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.details .item { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--muted); }
+.details .item svg { flex: none; }
+.details .item b { min-width: 0; color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* No blur: the item the menu acts on stays visible above the sheet (moving it up / down is watched live). */
 .backdrop.sheet { background: rgba(0, 0, 0, 0.2); animation: fade 0.2s ease-out; }
 .menu.sheet {

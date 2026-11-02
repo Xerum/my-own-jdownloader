@@ -1,4 +1,4 @@
-import { ref, shallowReactive } from 'vue'
+import { ref, shallowReactive, type Component } from 'vue'
 import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Minus } from '@lucide/vue'
 import { askConfirm } from './confirm'
 import { askPrompt } from './prompt'
@@ -9,6 +9,11 @@ import { selectedDownloadLinks, selectedDownloadPackages } from './expandedState
 export type Area = 'downloads' | 'linkgrabber'
 
 // A package or link the user can act on (context menu, F2).
+export interface LinkDetails {
+  status: { kind: string; text: string }
+  items: { icon: Component; label: string; value: string }[]
+}
+
 export interface Target {
   area: Area
   device?: string // the device the item lives on (the overview shows several); the current one if left out
@@ -30,6 +35,8 @@ export interface Target {
   // Linkgrabber link that JD offers variants for (quality / format).
   hasVariants?: boolean
   variantId?: string // the variant the link has now
+  // Downloads link: what the phone layout hides in the list (status, speed, size, ...); a function so the open menu follows the live data.
+  details?: () => LinkDetails | null
 }
 
 export const menu = ref<{ x: number; y: number; target: Target } | null>(null)
