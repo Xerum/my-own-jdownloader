@@ -5,7 +5,7 @@
   "version": "1.0.1",
   "description": "Companion for my-own-jdownloader: shows your JDownloader at a glance and solves captchas on the hoster's own page.",
   "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "permissions": ["storage", "alarms", "scripting", "tabs", "declarativeNetRequest", "notifications"],
+  "permissions": ["storage", "alarms", "scripting", "tabs", "declarativeNetRequest", "notifications", "contextMenus"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "JDownloader captchas", "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" } },

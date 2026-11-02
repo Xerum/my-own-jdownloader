@@ -1,5 +1,6 @@
 import { api, getCnlDevice, getCnlTarget, getSettings, withDevice } from './api.js'
 import { checkForUpdate } from './update.js'
+import { initContextMenu } from './contextmenu.js'
 
 // Badge with the number of open captchas. Alarms are limited to 30 s in MV3, which is fine here
 // (a job stays open for 10 minutes); the popup refreshes on its own.
@@ -259,18 +260,18 @@ const renderInPage = (job, logoSvg) => {
 // Click'n'Load: the page's links go to the backend; the page's frame 0 shows the outcome.
 const recentCnl = new Map() // fingerprint -> time; pages sometimes send the same links twice
 // device: chosen on the result card; otherwise the setting decides ("ask": the card offers the devices first).
-const sendCnl = async (payload, tabId, device) => {
+const sendCnl = async (payload, tabId, device, force = false) => {
   let only // the single online device, when "ask" has nothing to ask
   const fingerprint = [payload.crypted ?? payload.urls, payload.jk ?? '', payload.packageName ?? ''].join('|')
   if (device === undefined) {
-    if (Date.now() - (recentCnl.get(fingerprint) ?? 0) < 15000) return
+    if (!force && Date.now() - (recentCnl.get(fingerprint) ?? 0) < 15000) return
     recentCnl.set(fingerprint, Date.now())
     if ((await getCnlDevice()) === 'ask') {
       // Only devices that answer count: with one of them there is nothing to choose, with none the default fails visibly.
       const all = await api('/api/devices').catch(() => [])
       const online = all.filter((d) => d.online !== false)
       if (online.length > 1 && tabId !== undefined) {
-        chrome.tabs.sendMessage(tabId, { type: 'cnl-choose', devices: all, payload: { packageName: payload.packageName, source: payload.source, popup: payload.popup } }, { frameId: 0 }).catch(() => {})
+        chrome.tabs.sendMessage(tabId, { type: 'cnl-choose', devices: all, held: payload, payload: { packageName: payload.packageName, source: payload.source, popup: payload.popup } }, { frameId: 0 }).catch(() => {})
         return
       }
       if (online.length === 1) only = online[0].id
@@ -289,6 +290,8 @@ const sendCnl = async (payload, tabId, device) => {
   }
   if (tabId !== undefined) chrome.tabs.sendMessage(tabId, { type: 'cnl-result', ...result, payload: { packageName: payload.packageName, source: payload.source, popup: payload.popup } }, { frameId: 0 }).catch(() => {})
 }
+
+initContextMenu(sendCnl)
 
 // The "JDownloader is here" answer (jdcheck.js) follows the setting, so pages stop offering Click'n'Load when it is off.
 const applyCnlSetting = async () => {

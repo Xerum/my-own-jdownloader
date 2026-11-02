@@ -91,6 +91,7 @@
 
   // "Ask every time": the links are held back until a device is chosen here.
   const choose = async (msg) => {
+    pending = msg.held ?? pending // links that did not come from this page (context menu)
     const { icon } = await loadIcons()
     const popup = msg.payload?.popup === true
     const subText = msg.payload?.packageName || msg.payload?.source || ''
