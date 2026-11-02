@@ -53,7 +53,7 @@ export const useDragReorder = (
   const dropClass = (id: number) =>
     overId.value === id && dragId.value !== id ? (position.value === 'before' ? 'drop-before' : 'drop-after') : ''
 
-  return { dragId, onDragStart, onDragOver, onDrop, onDragEnd, dropClass }
+  return { dragId, overId, onDragStart, onDragOver, onDrop, onDragEnd, dropClass }
 }
 
 // Local (optimistic) reorder, the next live update from the server replaces it with the real order.

@@ -182,8 +182,74 @@ const onLinkDragStart = (packageId: number, linkId: number, event: DragEvent) =>
   linkDragPackage = packageId
   linkDrag.onDragStart(linkId, event)
 }
+// Package that currently receives the dragged links / packages (move into it / merge), as opposed to reordering.
+const intoId = ref<number | null>(null)
 const onLinkDragOver = (packageId: number, linkId: number, event: DragEvent) => {
-  if (packageId === linkDragPackage) linkDrag.onDragOver(linkId, event)
+  if (linkDrag.dragId.value === null) return
+  if (packageId === linkDragPackage) {
+    intoId.value = null
+    linkDrag.onDragOver(linkId, event)
+  } else {
+    event.preventDefault()
+    intoId.value = packageId
+  }
+}
+const endDrag = () => {
+  intoId.value = null
+  linkDrag.onDragEnd()
+  packageDrag.onDragEnd()
+}
+// Dragged links: the selection when the dragged link is part of it, else just that link.
+const draggedLinkIds = () => {
+  const id = linkDrag.dragId.value
+  if (id === null) return []
+  return selected.value.has(id) ? allLinks.value.filter((l) => selected.value.has(l.uuid)).map((l) => l.uuid) : [id]
+}
+const dropInto = async (packageId: number) => {
+  const linkIds = linkDrag.dragId.value !== null ? draggedLinkIds() : []
+  const merging = linkDrag.dragId.value === null ? mergeSources().filter((id) => id !== packageId) : []
+  endDrag()
+  if (linkIds.length) await post('/api/linkgrabber/links/move-to-package', { destPackageId: packageId, linkIds })
+  else if (merging.length) await post('/api/linkgrabber/merge', { destPackageId: packageId, packageIds: merging })
+}
+const mergeSources = () => {
+  const id = packageDrag.dragId.value
+  return id === null ? [] : markedPackageIds().includes(id) ? markedPackageIds() : [id]
+}
+const onLinkDrop = (packageId: number, event: DragEvent) => {
+  if (intoId.value !== null && packageId !== linkDragPackage) {
+    event.preventDefault()
+    void dropInto(packageId)
+  } else linkDrag.onDrop(event)
+}
+// Package card: dragged links go into it; a dragged package is merged into it when dropped on the middle of the
+// header, the edges of the header (and the rest of the card) reorder.
+const onPackageDragOver = (p: { uuid: number }, event: DragEvent) => {
+  if (linkDrag.dragId.value !== null) {
+    if (p.uuid === linkDragPackage) return
+    event.preventDefault()
+    intoId.value = p.uuid
+    return
+  }
+  if (packageDrag.dragId.value === null) return
+  const card = event.currentTarget as HTMLElement
+  const head = card.querySelector('.head') as HTMLElement | null
+  const rect = head?.getBoundingClientRect()
+  const inMiddle = rect && event.clientY > rect.top + rect.height * 0.3 && event.clientY < rect.top + rect.height * 0.7
+  if (inMiddle && !mergeSources().includes(p.uuid)) {
+    event.preventDefault()
+    intoId.value = p.uuid
+    packageDrag.overId.value = null
+  } else {
+    intoId.value = null
+    packageDrag.onDragOver(p.uuid, event)
+  }
+}
+const onPackageDrop = (p: { uuid: number }, event: DragEvent) => {
+  if (intoId.value === p.uuid) {
+    event.preventDefault()
+    void dropInto(p.uuid)
+  } else packageDrag.onDrop(event)
 }
 
 const allState = computed(() => selectionState(visibleLinks.value))
@@ -268,13 +334,14 @@ const removeSelected = async () => {
       :key="p.uuid"
       class="gpackage"
       :data-item="`linkgrabber:package:${p.uuid}`"
-      :class="[{ 'menu-open': menuOn('linkgrabber', 'package', p.uuid), disabled: isPackageDisabled(p), 'has-offline': hasOffline(p), dragging: packageDrag.dragId.value === p.uuid }, packageDrag.dropClass(p.uuid)]"
+      :class="[{ 'menu-open': menuOn('linkgrabber', 'package', p.uuid), disabled: isPackageDisabled(p), 'has-offline': hasOffline(p), dragging: packageDrag.dragId.value === p.uuid, 'drop-into': intoId === p.uuid }, packageDrag.dropClass(p.uuid)]"
       :draggable="draggablePackage === p.uuid"
       @mouseup="draggablePackage = null"
       @dragstart="packageDrag.onDragStart(p.uuid, $event)"
-      @dragover="packageDrag.onDragOver(p.uuid, $event)"
-      @drop="packageDrag.onDrop($event)"
-      @dragend="packageDrag.onDragEnd(); draggablePackage = null"
+      @dragover="onPackageDragOver(p, $event)"
+      @dragleave="intoId === p.uuid && !($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node) && (intoId = null)"
+      @drop="onPackageDrop(p, $event)"
+      @dragend="endDrag(); draggablePackage = null"
       @pointerenter="setHovered(packageTarget(p))"
       @pointerleave="clearHovered(packageTarget(p))"
       @contextmenu="openMenu($event, packageTarget(p))"
@@ -283,7 +350,7 @@ const removeSelected = async () => {
       @touchcancel="draggablePackage = null"
     >
       <div class="head">
-        <GripVertical :size="16" class="grip" title="Drag to reorder" @mousedown.stop="draggablePackage = p.uuid" @touchstart.passive="draggablePackage = p.uuid" />
+        <GripVertical :size="16" class="grip" title="Drag to reorder, drop on another package's header to merge" @mousedown.stop="draggablePackage = p.uuid" @touchstart.passive="draggablePackage = p.uuid" />
         <input type="checkbox" :checked="selectionState(p.links) === 'all'" :ref="(el) => checkboxState(el as HTMLInputElement, selectionState(p.links))" @change="togglePackage(p.links)" />
         <button type="button" class="name" :title="p.name" @click="toggleExpanded(p.uuid)">
           <ChevronRight :size="16" class="chevron" :class="{ open: expandedGrabber.has(p.uuid) }" /><span class="pname">{{ p.name }}</span>
@@ -308,8 +375,8 @@ const removeSelected = async () => {
           @pointerdown.stop="longPress($event, () => openMenu($event, linkTarget(l)))"
           @dragstart.stop="onLinkDragStart(p.uuid, l.uuid, $event)"
           @dragover.stop="onLinkDragOver(p.uuid, l.uuid, $event)"
-          @drop.stop="linkDrag.onDrop($event)"
-          @dragend.stop="linkDrag.onDragEnd()"
+          @drop.stop="onLinkDrop(p.uuid, $event)"
+          @dragend.stop="endDrag()"
           :title="l.url"
           @click="onLinkClick($event, l)"
         >
@@ -385,7 +452,8 @@ button.danger { color: #d14343; }
 .glinks { margin-top: 14px; display: grid; }
 .glink { display: grid; grid-template-columns: 18px minmax(0, 1fr) 110px 80px 20px; gap: 14px; align-items: center; padding: 10px 8px; font-size: 0.85rem; cursor: pointer; user-select: none; }
 .glink:hover, .glink.menu-open { background: var(--hover); }
-.gpackage.menu-open { border-color: var(--accent); }
+.gpackage.menu-open, .gpackage.drop-into { border-color: var(--accent); }
+.gpackage.drop-into { box-shadow: 0 0 0 2px var(--accent); }
 .glink.picked { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .glink + .glink { border-top: 1px solid var(--border); }
 .glink.disabled { opacity: 0.55; }

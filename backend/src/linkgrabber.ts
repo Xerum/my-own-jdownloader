@@ -182,6 +182,16 @@ export class Linkgrabber {
     for (let i = 0; i < linkIds.length; i++) await this.call('/linkgrabberv2/moveLinks', [[linkIds[i]], i === 0 ? afterLinkId : linkIds[i - 1], packageId])
   }
 
+  // Moves links (from any packages) to the end of another package.
+  async moveLinksToPackage(destPackageId: number, linkIds: number[]): Promise<void> {
+    const links = await this.getLinks()
+    const destLinks = links.filter((l) => l.packageUUID === destPackageId)
+    const wanted = new Set(linkIds)
+    const moving = links.filter((l) => wanted.has(l.uuid) && l.packageUUID !== destPackageId)
+    if (!destLinks.length || !moving.length) throw new Error('Nothing to move')
+    await this.call('/linkgrabberv2/moveLinks', [moving.map((l) => l.uuid), destLinks[destLinks.length - 1].uuid, destPackageId])
+  }
+
   // Merges packages: moves all links of the source packages to the end of the destination package.
   // (Emptied packages disappear from the linkgrabber on their own.)
   async merge(destPackageId: number, sourcePackageIds: number[]): Promise<void> {

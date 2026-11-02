@@ -238,6 +238,13 @@ app.post<{ Params: { uuid: string }; Body: { linkIds?: unknown; afterLinkId?: un
   return { ok: true }
 })
 
+app.post<{ Body: { destPackageId?: unknown; linkIds?: unknown } }>('/api/linkgrabber/links/move-to-package', async (request, reply) => {
+  const { destPackageId, linkIds } = request.body ?? {}
+  if (!Number.isSafeInteger(destPackageId) || !isIdList(linkIds)) return reply.code(400).send({ error: 'Invalid body' })
+  await dev(request).grabber.moveLinksToPackage(destPackageId as number, linkIds)
+  return { ok: true }
+})
+
 app.post<{ Body: { destPackageId?: unknown; packageIds?: unknown } }>('/api/linkgrabber/merge', async (request, reply) => {
   const { destPackageId, packageIds } = request.body ?? {}
   if (!Number.isSafeInteger(destPackageId) || !Array.isArray(packageIds) || !packageIds.length || !packageIds.every((v) => Number.isSafeInteger(v))) {
