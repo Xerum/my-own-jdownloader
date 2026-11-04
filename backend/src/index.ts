@@ -687,7 +687,9 @@ const hostIcons = new HostIcons(process.env.ICON_CACHE_DIR ?? './data/icons')
 
 app.get<{ Params: { host: string } }>('/api/icons/:host', async (request, reply) => {
   const host = request.params.host.toLowerCase()
-  if (!/^[a-z0-9.-]{1,100}$/.test(host)) return reply.code(400).send({ error: 'Invalid host' })
+  // Not just domains: JD also reports pseudo-hosts like "http links" for plain, unrecognized URLs. Only what
+  // would be unsafe as part of a cache filename (icons.ts) is rejected.
+  if (!/^[^/\\\x00-\x1f]{1,100}$/.test(host)) return reply.code(400).send({ error: 'Invalid host' })
   const icon = await hostIcons.get(host)
   return reply
     .header('Cache-Control', 'public, max-age=86400')
