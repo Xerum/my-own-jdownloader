@@ -109,7 +109,7 @@ onMounted(async () => {
 <style scoped>
 .spin { animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.install { display: grid; gap: 16px; max-width: 560px; }
+.install { display: grid; gap: 16px; max-width: none; }
 .card { display: grid; gap: 12px; padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
 h3 { margin: 0; font-size: 1rem; }
 .hint { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
