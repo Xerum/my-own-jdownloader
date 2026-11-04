@@ -18,6 +18,7 @@
 - [Talking to the MyJDownloader API](#talking-to-the-myjdownloader-api)
 - [Distributing the extension and the app](#distributing-the-extension-and-the-app)
 - [Android app](#android-app)
+- [Testing](#testing)
 - [Development](#development)
 
 ## Plugins
@@ -345,6 +346,24 @@ Things to know:
 - The manifest allows clear-text http: the backend usually has no certificate.
 - Settings pages for the phone: list and page per section (`SettingsView.vue`, the anchor is `#settings` and `#settings/<section>`), the shared
   styles of the app pages are in `appSettings.css`, the switch is `input.switch` / `label.check` in `global.css`.
+
+## Testing
+
+**Test devices** (`testing/devices/`). Two throw-away JDownloader containers (`jd-test-1`, `jd-test-2`) that log in with
+the credentials from `.env` and show up as extra devices on the same MyJDownloader account, next to the real one.
+`testing/devices/run.sh up` starts them (the first start takes a few minutes: JD updates itself), `status` shows the
+containers and what the account sees, `down` removes containers and volumes completely. They never touch the real
+JDownloader container. For the direct connection (see above) the app also needs their Docker network, in the gitignored
+`compose.override.yaml`.
+
+**UI smoke test** (`testing/`). A Puppeteer script that opens the web UI against a test device, clicks through every
+tab, every settings section and the add-links / context-menu flow, and reports any JS console error. It adds one
+harmless test link and removes it again via the API afterwards, so it leaves nothing behind. Run it with
+`testing/run.sh` (starts the test devices and rebuilds/starts the app if needed); `testing/run.sh install` after
+changing `testing/package.json`. It is a separate project (own `package.json`, not an npm workspace), built into its
+own image (`testing/Dockerfile`, Alpine's own Chromium package: Puppeteer's bundled download needs glibc and does not
+run there). The sections it visits come from the sidebar DOM, not a hardcoded list, so a new entry in `SECTIONS`
+(`frontend/src/settings.ts`) is covered automatically.
 
 ## Development
 

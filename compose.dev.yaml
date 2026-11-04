@@ -28,6 +28,22 @@ services:
     ports:
       - "${APP_PORT:?set APP_PORT in .env}:3000"
 
+  # Puppeteer smoke test against the running app, see testing/run.sh.
+  ui-test:
+    profiles: ["test"]
+    build: ./testing
+    working_dir: /app/testing
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file: .env
+    environment:
+      HOME: /tmp
+      APP_URL: http://app:3000
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    volumes:
+      - ./testing:/app/testing
+    depends_on:
+      - app
+
 volumes:
   node_modules:
   backend_node_modules:

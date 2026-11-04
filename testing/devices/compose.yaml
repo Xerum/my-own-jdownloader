@@ -1,6 +1,6 @@
 # Throw-away JDownloader devices for testing multi-device support.
-# They log in with the credentials from ../.env (MYJD_EMAIL / MYJD_PASSWORD) and show up as extra devices
-# on the same MyJDownloader account. Use test-devices/run.sh, which also cleans up completely.
+# They log in with the credentials from ../../.env (MYJD_EMAIL / MYJD_PASSWORD) and show up as extra devices
+# on the same MyJDownloader account. Use testing/devices/run.sh, which also cleans up completely.
 name: jd-test
 
 x-jd: &jd
