@@ -101,7 +101,7 @@ let lastSolverCheck = Date.now() // the start registered them
 const checkSolver = () => {
   if (!solverUrl || Date.now() - lastSolverCheck < 5 * 60 * 1000) return
   lastSolverCheck = Date.now()
-  void Promise.all(registry.all().map((c) => registerSolver(c, true)))
+  void Promise.all(registry.all().filter((c) => c.listed).map((c) => registerSolver(c, true)))
 }
 
 // The device a request is about: ?device=<id> (or "device" in the JSON body), otherwise the default device.
