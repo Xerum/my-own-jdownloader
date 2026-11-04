@@ -11,7 +11,8 @@ import { computed, onUnmounted, reactive, ref, watch, watchEffect } from 'vue'
 import PackageSlot from './PackageSlot.vue'
 import { formatBytes, formatLongEta, formatSpeed } from './format'
 import { coarsePointer, longPress } from './longPress'
-import { reorderLocally, useDragReorder } from './dragReorder'
+import { useDragReorder } from './dragReorder'
+import { addPending, reorderOp, withPending } from './pendingOps'
 import type { DownloadLink, DownloadPackage, Extraction } from './types'
 
 const props = defineProps<{ pkg: DownloadPackage; device?: string }>()
@@ -69,8 +70,10 @@ const onHeadClick = (e: MouseEvent) => {
 }
 const links = ref<DownloadLink[] | null>(null)
 const error = ref('')
+const linksScope = computed(() => `dll:${props.device ?? ''}:${props.pkg.uuid}`)
 const moveLink = async (ids: number[], afterId: number) => {
-  if (links.value) links.value = reorderLocally(links.value, (l) => l.uuid, ids, afterId)
+  const cancel = addPending<DownloadLink>(linksScope.value, reorderOp((l) => l.uuid, ids, afterId))
+  if (links.value) links.value = withPending(linksScope.value, links.value)
   try {
     const res = await fetch(withDevice(`/api/packages/${props.pkg.uuid}/links/move`, props.device), {
       method: 'POST',
@@ -80,6 +83,7 @@ const moveLink = async (ids: number[], afterId: number) => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     error.value = ''
   } catch (e) {
+    cancel()
     showError(`Moving failed: ${e instanceof Error ? e.message : e}`)
   }
 }
@@ -196,7 +200,7 @@ const loadLinks = async () => {
     const res = await fetch(withDevice(`/api/packages/${props.pkg.uuid}/links`, props.device))
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const fresh = await res.json()
-    if (drag.dragId.value === null) links.value = fresh
+    if (drag.dragId.value === null) links.value = withPending(linksScope.value, fresh)
     error.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -290,8 +294,8 @@ onUnmounted(() => clearInterval(timer))
         :draggable="!coarsePointer"
         @pointerdown.stop="longPress($event, () => onLinkContext($event, l))"
         @dragstart.stop="drag.onDragStart(l.uuid, $event)"
-        @dragover.stop="drag.onDragOver(l.uuid, $event)"
-        @drop.stop="drag.onDrop($event)"
+        @dragover="drag.dragId.value !== null && ($event.stopPropagation(), drag.onDragOver(l.uuid, $event))"
+        @drop="drag.dragId.value !== null && ($event.stopPropagation(), drag.onDrop($event))"
         @dragend.stop="drag.onDragEnd()"
       >
         <div class="main">
@@ -372,6 +376,7 @@ onUnmounted(() => clearInterval(timer))
 .dragging { opacity: 0.4; }
 .drop-before { box-shadow: 0 -3px 0 var(--accent); }
 .drop-after { box-shadow: 0 3px 0 var(--accent); }
+.package.drop-into { outline: 2px solid var(--accent); outline-offset: -2px; }
 .link[draggable=true] { cursor: grab; }
 .package { -webkit-touch-callout: none; }
 .links { margin-top: 10px; display: grid; }

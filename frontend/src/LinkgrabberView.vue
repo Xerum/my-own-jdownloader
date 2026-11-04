@@ -6,7 +6,8 @@ import { withDevice } from './devices'
 import { ChevronRight, GripVertical, CircleCheck, CircleHelp, CircleX, Folder, Inbox, PowerOff, Loader, PackagePlus, Trash2, X } from '@lucide/vue'
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { askConfirm } from './confirm'
-import { useDragReorder } from './dragReorder'
+import { inMergeZone, useDragReorder } from './dragReorder'
+import { addPending, reorderOp, withPending, type PendingOp } from './pendingOps'
 import { expandedGrabber } from './expandedState'
 import { formatBytes } from './format'
 import PackageSlot from './PackageSlot.vue'
@@ -14,7 +15,7 @@ import LoadingState from './LoadingState.vue'
 import { showError } from './toast'
 import PriorityMark from './PriorityMark.vue'
 import { clearHovered, menuOn, movedTick, openMenu, setHovered, setMarked, type Target } from './itemActions'
-import type { GrabberLink, GrabberState } from './types'
+import type { GrabberLink, GrabberPackage, GrabberState } from './types'
 
 // device: the device this list belongs to (the overview shows several lists); compact: a short note instead of the big empty state.
 const props = defineProps<{ state: GrabberState | null; analysing: boolean; device?: string; compact?: boolean }>()
@@ -72,13 +73,16 @@ const hasOffline = (p: { links: GrabberLink[] }) => p.links.some((l) => l.availa
 const isPackageDisabled = (p: { enabled: boolean; links: GrabberLink[] }) => !p.enabled || (p.links.length > 0 && p.links.every((l) => !l.enabled))
 const hostOf = (l: GrabberLink) => l.host || 'unknown'
 
-const allLinks = computed(() => (props.state?.packages ?? []).flatMap((p) => p.links))
+// What JD has not confirmed yet is shown anyway (pendingOps.ts).
+const scope = computed(() => `gb:${props.device ?? ''}`)
+const livePackages = computed(() => withPending(scope.value, props.state?.packages ?? []))
+const allLinks = computed(() => livePackages.value.flatMap((p) => p.links))
 const matchesHost = (l: GrabberLink) => !hostFilter.value.size || hostFilter.value.has(hostOf(l))
 const matchesExt = (l: GrabberLink) => !extFilter.value.size || extFilter.value.has(extOf(l))
 
 // Packages reduced to the links that pass the filters (empty packages are hidden).
 const packages = computed(() =>
-  (props.state?.packages ?? [])
+  livePackages.value
     .map((p) => ({ ...p, links: p.links.filter((l) => matchesHost(l) && matchesExt(l)) }))
     .filter((p) => p.links.length)
 )
@@ -157,25 +161,41 @@ const toggleExpanded = (id: number) => {
 }
 
 // Manual reordering: packages by their grip, links within their own package.
-const post = async (url: string, body: unknown) => {
+const post = async (url: string, body: unknown, op?: PendingOp<GrabberPackage>) => {
+  const cancel = op ? addPending(scope.value, op) : undefined
   try {
     const res = await fetch(withDevice(url, props.device), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     emit('changed')
   } catch (e) {
+    cancel?.()
     showError(`Moving failed: ${e instanceof Error ? e.message : e}`)
   }
 }
 const draggablePackage = ref<number | null>(null)
 const packageDrag = useDragReorder(
   () => packages.value.map((p) => p.uuid),
-  (ids, afterId) => void post('/api/linkgrabber/packages/move', { packageIds: ids, afterPackageId: afterId }),
+  (ids, afterId) => void post('/api/linkgrabber/packages/move', { packageIds: ids, afterPackageId: afterId }, reorderOp<GrabberPackage>((p) => p.uuid, ids, afterId)),
   (id) => (markedPackageIds().includes(id) ? markedPackageIds() : [id])
 )
 let linkDragPackage: number | null = null
 const linkDrag = useDragReorder(
   () => packages.value.find((p) => p.uuid === linkDragPackage)?.links.map((l) => l.uuid) ?? [],
-  (ids, afterId) => void post(`/api/linkgrabber/packages/${linkDragPackage}/links/move`, { linkIds: ids, afterLinkId: afterId }),
+  (ids, afterId) => {
+    const packageId = linkDragPackage
+    const inPackage = reorderOp<GrabberLink>((l) => l.uuid, ids, afterId)
+    void post(`/api/linkgrabber/packages/${packageId}/links/move`, { linkIds: ids, afterLinkId: afterId }, (list) => {
+      let changed = false
+      const out = list.map((p) => {
+        if (p.uuid !== packageId) return p
+        const links = inPackage(p.links)
+        if (!links) return p
+        changed = true
+        return { ...p, links }
+      })
+      return changed ? out : null
+    })
+  },
   (id) => (selected.value.has(id) ? (packages.value.find((p) => p.uuid === linkDragPackage)?.links ?? []).map((l) => l.uuid).filter((x) => selected.value.has(x)) : [id])
 )
 const onLinkDragStart = (packageId: number, linkId: number, event: DragEvent) => {
@@ -209,8 +229,26 @@ const dropInto = async (packageId: number) => {
   const linkIds = linkDrag.dragId.value !== null ? draggedLinkIds() : []
   const merging = linkDrag.dragId.value === null ? mergeSources().filter((id) => id !== packageId) : []
   endDrag()
-  if (linkIds.length) await post('/api/linkgrabber/links/move-to-package', { destPackageId: packageId, linkIds })
-  else if (merging.length) await post('/api/linkgrabber/merge', { destPackageId: packageId, packageIds: merging })
+  if (linkIds.length) {
+    const moving = new Set(linkIds)
+    await post('/api/linkgrabber/links/move-to-package', { destPackageId: packageId, linkIds }, (list) => {
+      const moved = list.flatMap((p) => p.uuid === packageId ? [] : p.links.filter((l) => moving.has(l.uuid)))
+      if (!moved.length) return null
+      return list
+        .map((p) => p.uuid === packageId ? { ...p, links: [...p.links, ...moved], childCount: p.childCount + moved.length } : { ...p, links: p.links.filter((l) => !moving.has(l.uuid)) })
+        .filter((p) => p.uuid === packageId || p.links.length)
+    })
+  } else if (merging.length) {
+    const sources = new Set(merging)
+    await post('/api/linkgrabber/merge', { destPackageId: packageId, packageIds: merging }, (list) => {
+      const gone = list.filter((p) => sources.has(p.uuid))
+      if (!gone.length) return null
+      const links = gone.flatMap((p) => p.links)
+      return list
+        .filter((p) => !sources.has(p.uuid))
+        .map((p) => p.uuid === packageId ? { ...p, links: [...p.links, ...links], childCount: p.childCount + links.length, bytesTotal: p.bytesTotal + gone.reduce((n, g) => n + g.bytesTotal, 0) } : p)
+    })
+  }
 }
 const mergeSources = () => {
   const id = packageDrag.dragId.value
@@ -222,8 +260,8 @@ const onLinkDrop = (packageId: number, event: DragEvent) => {
     void dropInto(packageId)
   } else linkDrag.onDrop(event)
 }
-// Package card: dragged links go into it; a dragged package is merged into it when dropped on the middle of the
-// header, the edges of the header (and the rest of the card) reorder.
+// Package card: dragged links go into it; a dragged package is merged into it when dropped anywhere except the
+// top and bottom edge zone of the card, which reorder.
 const onPackageDragOver = (p: { uuid: number }, event: DragEvent) => {
   if (linkDrag.dragId.value !== null) {
     if (p.uuid === linkDragPackage) return
@@ -232,11 +270,7 @@ const onPackageDragOver = (p: { uuid: number }, event: DragEvent) => {
     return
   }
   if (packageDrag.dragId.value === null) return
-  const card = event.currentTarget as HTMLElement
-  const head = card.querySelector('.head') as HTMLElement | null
-  const rect = head?.getBoundingClientRect()
-  const inMiddle = rect && event.clientY > rect.top + rect.height * 0.3 && event.clientY < rect.top + rect.height * 0.7
-  if (inMiddle && !mergeSources().includes(p.uuid)) {
+  if (inMergeZone(event) && !mergeSources().includes(p.uuid)) {
     event.preventDefault()
     intoId.value = p.uuid
     packageDrag.overId.value = null
@@ -350,7 +384,7 @@ const removeSelected = async () => {
       @touchcancel="draggablePackage = null"
     >
       <div class="head">
-        <GripVertical :size="16" class="grip" title="Drag to reorder, drop on another package's header to merge" @mousedown.stop="draggablePackage = p.uuid" @touchstart.passive="draggablePackage = p.uuid" />
+        <GripVertical :size="16" class="grip" title="Drag to reorder, drop on another package to merge (top and bottom edge: place before / after)" @mousedown.stop="draggablePackage = p.uuid" @touchstart.passive="draggablePackage = p.uuid" />
         <input type="checkbox" :checked="selectionState(p.links) === 'all'" :ref="(el) => checkboxState(el as HTMLInputElement, selectionState(p.links))" @change="togglePackage(p.links)" />
         <button type="button" class="name" :title="p.name" @click="toggleExpanded(p.uuid)">
           <ChevronRight :size="16" class="chevron" :class="{ open: expandedGrabber.has(p.uuid) }" /><span class="pname">{{ p.name }}</span>
@@ -374,8 +408,8 @@ const removeSelected = async () => {
           :draggable="!coarsePointer"
           @pointerdown.stop="longPress($event, () => openMenu($event, linkTarget(l)))"
           @dragstart.stop="onLinkDragStart(p.uuid, l.uuid, $event)"
-          @dragover.stop="onLinkDragOver(p.uuid, l.uuid, $event)"
-          @drop.stop="onLinkDrop(p.uuid, $event)"
+          @dragover="linkDrag.dragId.value !== null && ($event.stopPropagation(), onLinkDragOver(p.uuid, l.uuid, $event))"
+          @drop="linkDrag.dragId.value !== null && ($event.stopPropagation(), onLinkDrop(p.uuid, $event))"
           @dragend.stop="endDrag()"
           :title="l.url"
           @click="onLinkClick($event, l)"
