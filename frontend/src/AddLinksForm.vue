@@ -4,9 +4,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import DevicePicker from './DevicePicker.vue'
 import { currentDevice, devices, multiple, showingAll, withDevice } from './devices'
 
+const props = defineProps<{ initialLinks?: string }>()
 const emit = defineEmits<{ added: [device: string]; cancel: [] }>()
 
-const links = ref('')
+const links = ref(props.initialLinks ?? '')
 const file = ref<File | null>(null)
 // The browser's own file input looks out of place: it stays hidden, our button opens it.
 const picker = ref<HTMLInputElement>()
@@ -127,6 +128,41 @@ const post = async (url: string, body: unknown) => {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+// Files dropped on the form: text files fill the link field, container files become the container to add. The
+// window-wide drop handler (useFileDrop) must not see these events, it would add the files right away.
+const CONTAINER_EXTENSIONS = ['dlc', 'ccf', 'rsdf', 'jdc', 'metalink', 'meta4']
+const dragging = ref(false)
+const carriesFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') === true
+const onDragOver = (e: DragEvent) => {
+  if (!carriesFiles(e)) return
+  e.stopPropagation()
+  e.preventDefault()
+  dragging.value = true
+}
+const onDragLeave = (e: DragEvent) => {
+  if (!carriesFiles(e)) return
+  e.stopPropagation()
+  if (!(e.currentTarget as Node).contains(e.relatedTarget as Node | null)) dragging.value = false
+}
+const onDrop = async (e: DragEvent) => {
+  if (!carriesFiles(e)) return
+  e.stopPropagation()
+  e.preventDefault()
+  dragging.value = false
+  error.value = ''
+  for (const f of [...(e.dataTransfer?.files ?? [])]) {
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
+    if (CONTAINER_EXTENSIONS.includes(ext)) {
+      file.value = f
+    } else if (ext === 'txt' || f.type === 'text/plain') {
+      const text = (await f.text()).trim()
+      links.value = links.value.trim() ? `${links.value.trimEnd()}\n${text}` : text
+    } else {
+      error.value = `"${f.name}" is neither a text file nor a container file`
+    }
+  }
+}
+
 const submit = async () => {
   if (!links.value.trim() && !file.value) {
     error.value = 'Please enter URLs, links or text'
@@ -163,8 +199,8 @@ const submit = async () => {
 </script>
 
 <template>
-  <form class="add" @submit.prevent="submit">
-    <textarea v-model="links" rows="4" placeholder="Paste links, URLs or other text here" />
+  <form class="add" :class="{ dragging }" @submit.prevent="submit" @dragenter.stop @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+    <textarea v-model="links" rows="4" placeholder="Paste links, URLs or other text here, or drop a .txt file" />
     <div class="file">
       <input ref="picker" type="file" accept=".dlc,.ccf,.rsdf,.jdc,.metalink,.meta4" hidden @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" />
       <button type="button" class="pick" :class="{ chosen: file }" @click="picker?.click()">
@@ -210,6 +246,7 @@ const submit = async () => {
 </template>
 
 <style scoped>
+.add.dragging textarea { border-color: var(--accent); }
 .add { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 h3 { margin: 14px 0 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); }
 textarea, input[type='text'], select, button {

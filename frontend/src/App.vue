@@ -126,6 +126,7 @@ const toTop = () => window.scrollTo(0, 0)
 onMounted(() => window.addEventListener('hashchange', onHashChange))
 onUnmounted(() => window.removeEventListener('hashchange', onHashChange))
 const addOpen = ref(false)
+const addPrefill = ref('')
 const grabberVisible = computed(() => tab.value === 'grabber')
 const grabber = useGrabber(grabberVisible)
 // Right after the page was opened with a device in the anchor: keep what the URL says.
@@ -193,7 +194,13 @@ const onAdded = async (device?: string) => {
   grabber.boost()
 }
 
-const dropping = useFileDrop(onAdded, showError, () => grabber.cancelBoost())
+// A text file dropped anywhere on the window opens the add-links dialog prefilled instead of being added right away.
+const onDroppedText = (text: string) => {
+  addPrefill.value = text
+  addOpen.value = true
+}
+
+const dropping = useFileDrop(onAdded, showError, () => grabber.cancelBoost(), onDroppedText)
 
 const movePackage = async (device: string, ids: number[], afterId: number) => {
   const snap = snapshots.value[device]
@@ -346,7 +353,7 @@ const dragFor = (device: string) => {
   </main>
 
   <div class="status-wrap" :class="{ hidden: tab === 'settings' }">
-    <StatusBar :snapshot="statusSnapshot" :device="showingAll ? '' : currentDevice" :connected="connected" :solver-jobs="captchas.widgetJobs.value" @add-links="addOpen = true" />
+    <StatusBar :snapshot="statusSnapshot" :device="showingAll ? '' : currentDevice" :connected="connected" :solver-jobs="captchas.widgetJobs.value" @add-links="addPrefill = ''; addOpen = true" />
   </div>
   <ContextMenu />
   <JdDialogs />
@@ -358,6 +365,6 @@ const dragFor = (device: string) => {
   <ItemDialogs />
   <LinksDialog />
   <VariantDialog />
-  <div v-if="dropping.active.value" class="dropzone"><FileDown :size="40" /> Drop container files or links to add them to the linkgrabber</div>
-  <AddLinksModal v-if="addOpen" @close="addOpen = false" @added="onAdded" />
+  <div v-if="dropping.active.value" class="dropzone"><FileDown :size="40" /> Drop container files or links to add them, or a text file to open it in the add-links dialog</div>
+  <AddLinksModal v-if="addOpen" :initial-links="addPrefill" @close="addOpen = false" @added="onAdded" />
 </template>

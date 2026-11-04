@@ -2,6 +2,7 @@ import { withDevice } from './devices'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const CONTAINER_EXTENSIONS = ['dlc', 'ccf', 'rsdf', 'jdc', 'metalink', 'meta4']
+const isTextFile = (f: File) => f.type === 'text/plain' || f.name.split('.').pop()?.toLowerCase() === 'txt'
 
 const readAsDataUrl = (f: File) =>
   new Promise<string>((resolve, reject) => {
@@ -24,9 +25,10 @@ const post = async (url: string, body: unknown) => {
   }
 }
 
-// Drop container files (DLC etc.) or links dragged from another page anywhere onto the window.
+// Drop container files (DLC etc.) or links dragged from another page anywhere onto the window; a text file
+// is handed to onText (opens the add-links dialog prefilled) instead of being added right away.
 // Our own drag and drop reordering only carries text/plain, so it never triggers the overlay.
-export const useFileDrop = (onAdded: () => void, onError: (message: string) => void, onFailed: () => void) => {
+export const useFileDrop = (onAdded: () => void, onError: (message: string) => void, onFailed: () => void, onText: (text: string) => void) => {
   const active = ref(false)
   let depth = 0
 
@@ -38,7 +40,7 @@ export const useFileDrop = (onAdded: () => void, onError: (message: string) => v
   // While dragging, browsers only reveal the MIME type, not the file name. Container files have no
   // registered type (empty / octet-stream) apart from metalink, so files of any other known type
   // (images, PDFs, ...) get no overlay. The extension is checked on drop.
-  const MAYBE_CONTAINER = /^(|application\/octet-stream|application\/metalink4?\+xml)$/
+  const MAYBE_CONTAINER = /^(|application\/octet-stream|application\/metalink4?\+xml|text\/plain)$/
   const looksDroppable = (e: DragEvent) => {
     const items = [...(e.dataTransfer?.items ?? [])]
     const files = items.filter((i) => i.kind === 'file')
@@ -70,19 +72,27 @@ export const useFileDrop = (onAdded: () => void, onError: (message: string) => v
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith('#'))
-    const unsupported = files.find((f) => !CONTAINER_EXTENSIONS.includes(f.name.split('.').pop()?.toLowerCase() ?? ''))
+    const textFiles = files.filter(isTextFile)
+    const containerFiles = files.filter((f) => CONTAINER_EXTENSIONS.includes(f.name.split('.').pop()?.toLowerCase() ?? ''))
+    const unsupported = files.find((f) => !textFiles.includes(f) && !containerFiles.includes(f))
     if (unsupported) {
-      onError(`"${unsupported.name}" is not a supported container file (${CONTAINER_EXTENSIONS.join(', ')})`)
+      onError(`"${unsupported.name}" is neither a text file nor a supported container file (${CONTAINER_EXTENSIONS.join(', ')})`)
       return
     }
+    // A text file opens the add-links dialog prefilled instead of being added right away.
+    if (textFiles.length) {
+      const texts = await Promise.all(textFiles.map((f) => f.text()))
+      onText(texts.join('\n'))
+    }
+    if (!containerFiles.length && !uris.length) return
     // Switch to the linkgrabber right away so the new entries show up as soon as JD reports them.
-    if (files.length || uris.length) onAdded()
+    onAdded()
     try {
-      for (const file of files) {
+      for (const file of containerFiles) {
         await post('/api/linkgrabber/add-container', { filename: file.name, dataUrl: await readAsDataUrl(file) })
       }
-      if (!files.length && uris.length) await post('/api/linkgrabber/add', { links: uris.join('\n'), autostart: false })
-      if (files.length || uris.length) onAdded()
+      if (!containerFiles.length && uris.length) await post('/api/linkgrabber/add', { links: uris.join('\n'), autostart: false })
+      onAdded()
     } catch (err) {
       onFailed()
       onError(`Adding failed: ${err instanceof Error ? err.message : err}`)

@@ -3,6 +3,7 @@ import { X } from '@lucide/vue'
 import { onMounted, onUnmounted } from 'vue'
 import AddLinksForm from './AddLinksForm.vue'
 
+defineProps<{ initialLinks?: string }>()
 defineEmits<{ close: []; added: [device: string] }>()
 
 // The dialog can only be closed with its buttons (no backdrop click, no Escape),
@@ -18,7 +19,7 @@ onUnmounted(() => (document.body.style.overflow = ''))
         <h2>Add links</h2>
         <button type="button" class="close" title="Cancel" @click="$emit('close')"><X :size="16" /></button>
       </header>
-      <div class="body"><AddLinksForm @added="$emit('added', $event)" @cancel="$emit('close')" /></div>
+      <div class="body"><AddLinksForm :initial-links="initialLinks" @added="$emit('added', $event)" @cancel="$emit('close')" /></div>
     </div>
   </div>
 </template>
