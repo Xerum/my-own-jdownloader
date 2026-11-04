@@ -22,6 +22,7 @@ import { expandedDownloads, saveExpandedDownloads, selectedDownloadLinks, select
 import { useFileDrop } from './useFileDrop'
 import ToastHost from './ToastHost.vue'
 import { progress, showError } from './toast'
+import { askConfirm } from './confirm'
 import AddLinksModal from './AddLinksModal.vue'
 import LinkgrabberView from './LinkgrabberView.vue'
 import CnlToggle from './CnlToggle.vue'
@@ -34,10 +35,11 @@ import { phone, SECTIONS, settingsOpen, settingsSection } from './settings'
 import { notifyNewCaptchas } from './useNotifications'
 import { useCaptchas } from './useCaptchas'
 import { useGrabber } from './useGrabber'
-import type { GrabberState } from './types'
+import type { DownloadPackage, GrabberState } from './types'
 import StatusBar from './StatusBar.vue'
 import PackageCard from './PackageCard.vue'
-import { reorderLocally, useDragReorder } from './dragReorder'
+import { useDragReorder } from './dragReorder'
+import { addPending, reorderOp, withPending } from './pendingOps'
 
 useDevices()
 void loadPlugins()
@@ -195,7 +197,8 @@ const dropping = useFileDrop(onAdded, showError, () => grabber.cancelBoost())
 
 const movePackage = async (device: string, ids: number[], afterId: number) => {
   const snap = snapshots.value[device]
-  if (snap) snapshots.value = { ...snapshots.value, [device]: { ...snap, packages: reorderLocally(snap.packages, (p) => p.uuid, ids, afterId) } }
+  const cancel = addPending<DownloadPackage>(`dl:${device}`, reorderOp((p) => p.uuid, ids, afterId))
+  if (snap) snapshots.value = { ...snapshots.value, [device]: { ...snap, packages: withPending(`dl:${device}`, snap.packages) } }
   try {
     const res = await fetch(withDevice('/api/packages/move', device), {
       method: 'POST',
@@ -204,7 +207,42 @@ const movePackage = async (device: string, ids: number[], afterId: number) => {
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
   } catch (e) {
+    cancel()
     showError(`Moving failed: ${e instanceof Error ? e.message : e}`)
+  }
+}
+
+// A package dropped on the middle of another: merge after a confirmation.
+const mergeDropped = async (device: string, ids: number[], targetId: number) => {
+  const target = snapshots.value[device]?.packages.find((p) => p.uuid === targetId)
+  const others = ids.filter((id) => id !== targetId)
+  if (!target || !others.length) return
+  const ok = await askConfirm({
+    title: 'Merge packages',
+    message: `${others.length + 1} packages will be merged into "${target.name}". The links of the other packages are moved there.`,
+    confirmLabel: 'Merge'
+  })
+  if (!ok) return
+  const sources = new Set(others)
+  const cancel = addPending<DownloadPackage>(`dl:${device}`, (items) => {
+    const gone = items.filter((p) => sources.has(p.uuid))
+    if (!gone.length) return null
+    return items
+      .filter((p) => !sources.has(p.uuid))
+      .map((p) => p.uuid === targetId ? { ...p, childCount: p.childCount + gone.reduce((n, g) => n + g.childCount, 0), bytesTotal: p.bytesTotal + gone.reduce((n, g) => n + g.bytesTotal, 0), bytesLoaded: p.bytesLoaded + gone.reduce((n, g) => n + g.bytesLoaded, 0) } : p)
+  })
+  const snap = snapshots.value[device]
+  if (snap) snapshots.value = { ...snapshots.value, [device]: { ...snap, packages: withPending(`dl:${device}`, snap.packages) } }
+  try {
+    const res = await fetch(withDevice('/api/downloads/merge', device), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destPackageId: targetId, packageIds: others })
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  } catch (e) {
+    cancel()
+    showError(`Merging failed: ${e instanceof Error ? e.message : e}`)
   }
 }
 
@@ -214,7 +252,8 @@ const dragFor = (device: string) => {
   let drag = drags.get(device)
   if (!drag) {
     drag = useDragReorder(() => (snapshots.value[device]?.packages ?? []).map((p) => p.uuid), (ids, afterId) => movePackage(device, ids, afterId),
-      (id) => (selectedPackagesDevice.value === device && selectedDownloadPackages.value.has(id) ? [...selectedDownloadPackages.value] : [id]))
+      (id) => (selectedPackagesDevice.value === device && selectedDownloadPackages.value.has(id) ? [...selectedDownloadPackages.value] : [id]),
+      (ids, targetId) => void mergeDropped(device, ids, targetId))
     drags.set(device, drag)
   }
   return drag
@@ -263,7 +302,7 @@ const dragFor = (device: string) => {
           :key="p.uuid"
           :pkg="p"
           :device="s.device.id"
-          :class="[dragFor(s.device.id).dropClass(p.uuid), { dragging: dragFor(s.device.id).dragId.value === p.uuid }]"
+          :class="[dragFor(s.device.id).dropClass(p.uuid), { dragging: dragFor(s.device.id).dragId.value === p.uuid, 'drop-into': dragFor(s.device.id).mergeId.value === p.uuid }]"
           @dragstart="dragFor(s.device.id).onDragStart(p.uuid, $event)"
           @dragover="dragFor(s.device.id).onDragOver(p.uuid, $event)"
           @drop="dragFor(s.device.id).onDrop($event)"
@@ -283,7 +322,7 @@ const dragFor = (device: string) => {
         v-for="p in packages"
         :key="p.uuid"
         :pkg="p"
-        :class="[dragFor(currentDevice).dropClass(p.uuid), { dragging: dragFor(currentDevice).dragId.value === p.uuid }]"
+        :class="[dragFor(currentDevice).dropClass(p.uuid), { dragging: dragFor(currentDevice).dragId.value === p.uuid, 'drop-into': dragFor(currentDevice).mergeId.value === p.uuid }]"
         @dragstart="dragFor(currentDevice).onDragStart(p.uuid, $event)"
         @dragover="dragFor(currentDevice).onDragOver(p.uuid, $event)"
         @drop="dragFor(currentDevice).onDrop($event)"

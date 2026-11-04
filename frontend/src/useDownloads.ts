@@ -1,3 +1,4 @@
+import { withPending } from './pendingOps'
 import { computed, ref, watch } from 'vue'
 import { ALL, currentDevice, devices, devicesLoaded, showingAll } from './devices'
 import { liveConnected, liveScope, useLive } from './live'
@@ -41,7 +42,7 @@ export const useDownloads = () => {
     // The first message of a device that was never polled is empty; the real one follows right away.
     if (!rest.updatedAt) return
     announceFinished(device, snapshots.value[device], rest)
-    snapshots.value = { ...snapshots.value, [device]: rest }
+    snapshots.value = { ...snapshots.value, [device]: { ...rest, packages: withPending(`dl:${device}`, rest.packages) } }
   })
 
   return { snapshot, snapshots, connected: liveConnected }
