@@ -21,6 +21,8 @@ import { MyJdClient } from './myjd/client.js'
 import { registerMcp } from './mcp.js'
 import { McpLog } from './mcplog.js'
 import { UiSettingsStore } from './uisettings.js'
+import { VERSION } from './version.js'
+import { checkBackendUpdate } from './update.js'
 
 const { MYJD_EMAIL, MYJD_PASSWORD, MYJD_DEVICE, MYJD_DEVICES, UI_PASSWORD } = process.env
 if (!MYJD_EMAIL || !MYJD_PASSWORD) throw new Error('MYJD_EMAIL and MYJD_PASSWORD must be set')
@@ -127,7 +129,8 @@ app.addHook('onResponse', async (request, reply) => {
 // What the clients (Android app, browser extension) may expect of this backend. Raise it by one whenever a client change needs something new
 // here; a release says in compat.json which level it needs, and a client offers an update from GitHub only to a backend that has it.
 const API_LEVEL = 1
-app.get('/api/health', async () => ({ status: 'ok', apiLevel: API_LEVEL, myjdCalls: client.calls, directCalls: client.directCalls, clients: activity.status() }))
+app.get('/api/health', async () => ({ status: 'ok', version: VERSION, apiLevel: API_LEVEL, myjdCalls: client.calls, directCalls: client.directCalls, clients: activity.status() }))
+app.get<{ Querystring: { force?: string } }>('/api/backend-update', async (request) => checkBackendUpdate(request.query.force === '1'))
 // The state of the devices is looked up now if the last look is older than 15 s (the list of devices: 30 s): a client that asks for it
 // (the popup of the extension, the web UI, the app's service) gets it fresh, and nobody asking means no call.
 const deviceList = async () => {

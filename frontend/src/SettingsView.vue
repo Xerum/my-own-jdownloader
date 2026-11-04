@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight, HardDrive, Monitor, ServerOff, Smartphone } from '@lucide/vue'
 import { deviceName, devices, pickSettingsDevice, settingsDevice, showingAll } from './devices'
 import { phone, SECTIONS, settingsOpen, settingsSection, type SettingsSection } from './settings'
+import { backendUpdateAvailable } from './backendUpdate'
 import ContextMenuSettings from './ContextMenuSettings.vue'
 import AccountSettings from './AccountSettings.vue'
+import BackendUpdateSettings from './BackendUpdateSettings.vue'
 import BrowserExtensionSettings from './BrowserExtensionSettings.vue'
 import ExtensionSettings from './ExtensionSettings.vue'
 import JdInfoSettings from './JdInfoSettings.vue'
@@ -21,7 +23,8 @@ import JdSettings from './JdSettings.vue'
 import PluginSettings from './PluginSettings.vue'
 
 const current = computed(() => SECTIONS.find((s) => s.id === settingsSection.value) ?? SECTIONS[0])
-const uiSections = SECTIONS.filter((s) => s.scope === 'ui')
+// "backend-update" only shows up once a newer version is actually out (see backendUpdate.ts).
+const uiSections = computed(() => SECTIONS.filter((s) => s.scope === 'ui' && (s.id !== 'backend-update' || backendUpdateAvailable.value)))
 const appSections = SECTIONS.filter((s) => s.scope === 'app')
 const jdSections = SECTIONS.filter((s) => s.scope === 'jd')
 const name = computed(() => deviceName(settingsDevice.value))
@@ -30,7 +33,7 @@ const name = computed(() => deviceName(settingsDevice.value))
 const groups = computed(() =>
   [
     { id: 'app', label: 'App', icon: Smartphone, sections: appSections },
-    { id: 'ui', label: 'This interface', icon: Monitor, sections: uiSections },
+    { id: 'ui', label: 'This interface', icon: Monitor, sections: uiSections.value },
     { id: 'jd', label: 'JDownloader', icon: HardDrive, sections: jdSections }
   ].filter((g) => g.sections.length)
 )
@@ -76,8 +79,8 @@ const fold = (deviceId: string) => {
       </template>
 
       <h2 class="ui"><Monitor :size="13" /> This interface</h2>
-      <button v-for="s in uiSections" :key="s.id" type="button" class="ui" :class="{ active: settingsSection === s.id }" @click="settingsSection = s.id">
-        <component :is="s.icon" :size="16" /> {{ s.label }}
+      <button v-for="s in uiSections" :key="s.id" type="button" class="ui" :class="{ active: settingsSection === s.id, update: s.id === 'backend-update' }" @click="settingsSection = s.id">
+        <component :is="s.icon" :size="16" /> {{ s.label }}<span v-if="s.id === 'backend-update'" class="update-dot" />
       </button>
 
       <h2 class="jd"><HardDrive :size="13" /> JDownloader<span v-if="!showingAll && name" class="device">{{ name }}</span></h2>
@@ -111,14 +114,14 @@ const fold = (deviceId: string) => {
         </select>
         <ul class="rows">
           <li v-for="s in g.sections" :key="s.id">
-            <button type="button" class="row" @click="openSection(s)">
-              <component :is="s.icon" :size="18" /><span class="label">{{ s.label }}</span><ChevronRight :size="16" class="go" />
+            <button type="button" class="row" :class="{ update: s.id === 'backend-update' }" @click="openSection(s)">
+              <component :is="s.icon" :size="18" /><span class="label">{{ s.label }}</span><span v-if="s.id === 'backend-update'" class="update-dot" /><ChevronRight :size="16" class="go" />
             </button>
           </li>
         </ul>
       </template>
     </div>
-    <section v-if="!phone || settingsOpen" class="content">
+    <section v-if="!phone || settingsOpen" class="content" :class="current.scope">
       <button v-if="phone" type="button" class="back" @click="back"><ChevronLeft :size="18" /> Settings</button>
       <p class="scope" :class="current.scope">
         <template v-if="current.scope === 'jd'">
@@ -136,6 +139,7 @@ const fold = (deviceId: string) => {
         <AppLinksSettings v-else-if="current.id === 'app-links'" />
         <AppPrivacySettings v-else-if="current.id === 'app-privacy'" />
         <AppUpdateSettings v-else-if="current.id === 'app-update'" />
+        <BackendUpdateSettings v-else-if="current.id === 'backend-update'" />
         <BrowserExtensionSettings v-else-if="current.id === 'install'" />
         <PluginSettings v-else-if="current.id === 'plugins'" />
         <ContextMenuSettings v-else-if="current.id === 'context-menu'" />
@@ -164,6 +168,10 @@ const fold = (deviceId: string) => {
 .sidebar button:hover { color: var(--text); background: var(--hover); }
 .sidebar button.active { color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
 .sidebar button.jd.active { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--border); }
+.sidebar button.update, .row.update { color: var(--extract-text); }
+.sidebar button.update.active { background: color-mix(in srgb, var(--extract) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--extract) 40%, transparent); }
+.update-dot { flex: none; width: 8px; height: 8px; margin-left: 2px; border-radius: 50%; background: var(--extract); }
+.row.update .label { color: var(--extract-text); font-weight: 600; }
 .dev { display: grid; gap: 2px; margin-bottom: 4px; }
 .dev .devhead { padding: 6px 12px; font-weight: 600; color: var(--text); }
 .dev .devhead:disabled { color: var(--muted); font-weight: 400; cursor: default; }
@@ -181,6 +189,10 @@ const fold = (deviceId: string) => {
 .sub-leave-to { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .sub-enter-active, .sub-leave-active { transition: none; } }
 .title { margin: 0 0 12px; font-size: 1.1rem; }
+/* Phone-only pages (scope "app") stay a narrow form even on desktop (the Android app itself is phone-width anyway); every
+   other scope gets the full content width. Centralized here so a page never has to remember to opt out of appSettings.css's
+   narrow default itself (that was missed twice already, see the install card and the backend-update page). */
+.content.app :deep(.form) { max-width: 480px; }
 @media (max-width: 720px) {
   .settings { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .sidebar { position: static; display: flex; flex-wrap: wrap; align-items: center; }

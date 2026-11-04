@@ -32,6 +32,7 @@ import ThemeToggle from './ThemeToggle.vue'
 import SettingsView from './SettingsView.vue'
 import { loadPlugins } from './plugins'
 import { phone, SECTIONS, settingsOpen, settingsSection } from './settings'
+import { backendUpdateAvailable, useBackendUpdate } from './backendUpdate'
 import { notifyNewCaptchas } from './useNotifications'
 import { useCaptchas } from './useCaptchas'
 import { useGrabber } from './useGrabber'
@@ -42,6 +43,7 @@ import { useDragReorder } from './dragReorder'
 import { addPending, reorderOp, withPending } from './pendingOps'
 
 useDevices()
+useBackendUpdate()
 void loadPlugins()
 const { snapshot, snapshots, connected } = useDownloads()
 
@@ -278,7 +280,7 @@ const dragFor = (device: string) => {
       <button v-if="multiple" type="button" class="device-tab" :class="{ active: devicesOpen }" @click="devicesOpen = true">
         <span class="logo" aria-hidden="true" /><span class="label">Devices</span>
       </button>
-      <button type="button" :class="{ active: tab === 'settings' }" @click="openSettings"><Settings :size="16" /><span class="label">Settings</span></button>
+      <button type="button" :class="{ active: tab === 'settings' }" @click="openSettings"><Settings :size="16" /><span class="label">Settings</span><span v-if="backendUpdateAvailable" class="update-dot" title="An update is available" /></button>
     </nav>
     <DownloadControls v-if="!showingAll" :snapshots="snapshots" :targets="[currentDevice]" />
     <div class="header-tools">

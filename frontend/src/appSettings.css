@@ -1,6 +1,8 @@
 /* Shared by the pages of the settings group "App" (AppSettings, AppNotificationsSettings, AppCaptchaSettings, AppLinksSettings,
-   AppPrivacySettings): the form, a checkbox with a text, a field with a name, selects, hints. */
-.form { display: grid; gap: 16px; max-width: 480px; }
+   AppPrivacySettings): the form, a checkbox with a text, a field with a name, selects, hints.
+   No max-width here on purpose: SettingsView.vue caps .form width for scope "app" centrally, so a page of another scope
+   that happens to use this file (or just the class name "form") is never narrowed by accident (it happened twice already). */
+.form { display: grid; gap: 16px; }
 .check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .check input { margin-top: 3px; accent-color: var(--accent); }
 .check span { display: grid; gap: 2px; font-weight: 600; }
