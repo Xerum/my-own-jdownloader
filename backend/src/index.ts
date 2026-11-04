@@ -132,7 +132,12 @@ app.get('/api/health', async () => ({ status: 'ok', apiLevel: API_LEVEL, myjdCal
 // (the popup of the extension, the web UI, the app's service) gets it fresh, and nobody asking means no call.
 const deviceList = async () => {
   await registry.freshen(30_000).catch(() => undefined)
-  await Promise.all(registry.all().map((c) => c.bandwidth.probe(15_000)))
+  await Promise.all(
+    registry
+      .all()
+      .filter((c) => c.listed)
+      .map((c) => c.bandwidth.probe(15_000))
+  )
   return registry.list()
 }
 app.get('/api/devices', deviceList)
