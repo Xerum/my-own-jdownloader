@@ -13,7 +13,7 @@ const emit = defineEmits<{ handled: [id: number]; changed: [] }>()
 const text = ref('')
 const busy = ref(false)
 const menu = ref(false)
-const imageVersion = ref(0) // changes force the browser to load the picture again
+const imageVersion = ref(0) // changes trigger loading the picture again
 const input = ref<HTMLInputElement | null>(null)
 
 // Refreshing: JD issues a new captcha, which can take a moment. The dialog stays open (showing the old
@@ -28,6 +28,27 @@ const stopRefreshing = () => {
   refreshing.value = false
 }
 onUnmounted(() => clearInterval(refreshTimer))
+
+// Loaded as a data URI (not a plain <img src="/api/...">) so the mimetype we sniffed on the backend is
+// the one the browser renders and saves with, and so right-clicking it can offer "save image as" on the
+// actual picture instead of our API route.
+const imageSrc = ref<string | null>(null)
+watch(
+  [() => view.value?.id, () => view.value?.device, imageVersion],
+  async ([id, device]) => {
+    imageSrc.value = null
+    if (id === undefined) return
+    try {
+      const res = await fetch(withDevice(`/api/captcha/${id}/image`, device))
+      if (!res.ok) return
+      const { type, data } = await res.json()
+      imageSrc.value = `data:${type};base64,${data}`
+    } catch {
+      /* picture stays blank, the user can still retry via "New picture" */
+    }
+  },
+  { immediate: true }
+)
 
 // Time left, counted down every second between the polls.
 const now = ref(Date.now())
@@ -129,7 +150,7 @@ const refresh = async () => {
         <span class="line"><strong>{{ view.hoster }}</strong> wants you to solve this captcha<template v-if="multiple && view.deviceName"> <span class="muted">(on {{ view.deviceName }})</span></template></span>
       </p>
       <div class="picture" :class="{ loading: refreshing }">
-        <img :key="imageVersion" :src="withDevice(`/api/captcha/${view.id}/image?v=${imageVersion}`, view.device)" alt="Captcha" />
+        <img v-if="imageSrc" class="allow-contextmenu" :src="imageSrc" alt="Captcha" />
         <div v-if="refreshing" class="wait" role="status"><RefreshCw :size="22" class="spin" /> Requesting a new captcha…</div>
       </div>
       <input ref="input" v-model="text" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Enter response…" :disabled="busy || refreshing" @keydown.enter="solve" />

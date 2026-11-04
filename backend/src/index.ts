@@ -614,7 +614,7 @@ app.get<{ Params: { id: string } }>('/api/captcha/:id/image', async (request, re
   if (!Number.isSafeInteger(id)) return reply.code(400).send({ error: 'Invalid id' })
   const image = await dev(request).captchas.image(id)
   if (!image) return reply.code(404).send({ error: 'No picture for this captcha' })
-  return reply.header('Cache-Control', 'no-store').header('X-Content-Type-Options', 'nosniff').type(image.type).send(image.data)
+  return reply.header('Cache-Control', 'no-store').send({ type: image.type, data: image.data.toString('base64') })
 })
 
 // Token captchas (token) or image captchas (text).
