@@ -27,6 +27,11 @@ const extFilter = ref<Set<string>>(new Set())
 const busy = ref(false)
 let lastClicked: number | null = null // anchor for shift+click range selection
 
+// What JD has not confirmed yet is shown anyway (pendingOps.ts).
+const scope = computed(() => `gb:${props.device ?? ''}`)
+const livePackages = computed(() => withPending(scope.value, props.state?.packages ?? []))
+const allLinks = computed(() => livePackages.value.flatMap((p) => p.links))
+
 const NO_EXT = '(none)'
 const extOf = (l: GrabberLink) => {
   const dot = l.name.lastIndexOf('.')
@@ -73,10 +78,6 @@ const hasOffline = (p: { links: GrabberLink[] }) => p.links.some((l) => l.availa
 const isPackageDisabled = (p: { enabled: boolean; links: GrabberLink[] }) => !p.enabled || (p.links.length > 0 && p.links.every((l) => !l.enabled))
 const hostOf = (l: GrabberLink) => l.host || 'unknown'
 
-// What JD has not confirmed yet is shown anyway (pendingOps.ts).
-const scope = computed(() => `gb:${props.device ?? ''}`)
-const livePackages = computed(() => withPending(scope.value, props.state?.packages ?? []))
-const allLinks = computed(() => livePackages.value.flatMap((p) => p.links))
 const matchesHost = (l: GrabberLink) => !hostFilter.value.size || hostFilter.value.has(hostOf(l))
 const matchesExt = (l: GrabberLink) => !extFilter.value.size || extFilter.value.has(extOf(l))
 
