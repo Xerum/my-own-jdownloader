@@ -44,8 +44,23 @@ app.addHook('onRequest', async (request) => {
   }
 })
 
+// api.jdownloader.org can be briefly unreachable when we start (e.g. right after boot); retry with backoff
+// instead of crashing, which would otherwise loop the container restart without ever getting further.
+const retryUntilSuccess = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
+  let delay = 2000
+  for (;;) {
+    try {
+      return await fn()
+    } catch (e) {
+      app.log.error(`${label} failed, retrying in ${delay / 1000}s: ${e instanceof Error ? e.message : e}`)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      delay = Math.min(delay * 2, 60000)
+    }
+  }
+}
+
 const client = new MyJdClient(MYJD_EMAIL, MYJD_PASSWORD)
-await client.connect()
+await retryUntilSuccess('MyJD login', () => client.connect())
 
 // Registers us as Anti-Captcha service in a device, unless the user has set up one of their own there.
 const solverUrl = process.env.JD_SOLVER_URL
@@ -75,8 +90,10 @@ const registry = new DeviceRegistry(client, {
     void registerSolver(context)
   }
 })
-await registry.start()
-if (!registry.all().length) throw new Error('No JDownloader device found on this account')
+await retryUntilSuccess('Device discovery', async () => {
+  await registry.start()
+  if (!registry.all().length) throw new Error('No JDownloader device found on this account')
+})
 
 // Something else can wipe our registration while we run (the API key was cleared once, after which JD had no solver for Turnstile and skipped
 // every link of the host), so it is looked at again now and then. Not on a timer: a request of a client does it, when the last look is old.
