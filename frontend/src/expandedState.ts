@@ -32,3 +32,22 @@ export const selectedPackagesDevice = ref('')
 export const selectedDownloadLinks = ref<Set<number>>(new Set())
 // Where the last plain/ctrl click happened: the start of a shift+click range (ranges stay inside one package).
 export const linkAnchor = ref<{ package: number; link: number } | null>(null)
+// Where the last ctrl click on a package header happened: the start of a shift+click range of packages.
+export const packageAnchor = ref<{ device: string; package: number } | null>(null)
+
+// Marks exactly these packages of one device's list (select all, shift+click range); link marks are dropped.
+export const markPackages = (device: string, ids: Iterable<number>) => {
+  selectedPackagesDevice.value = device
+  selectedDownloadPackages.value = new Set(ids)
+  if (selectedDownloadLinks.value.size) selectedDownloadLinks.value = new Set()
+}
+export const clearDownloadMarks = () => {
+  if (selectedDownloadLinks.value.size) selectedDownloadLinks.value = new Set()
+  if (selectedDownloadPackages.value.size) selectedDownloadPackages.value = new Set()
+}
+// How many of these packages are marked: 'none', 'some' or 'all' (for the "All" checkbox).
+export const packageMarkState = (device: string, ids: number[]): 'none' | 'some' | 'all' => {
+  if (selectedPackagesDevice.value !== device) return 'none'
+  const count = ids.filter((id) => selectedDownloadPackages.value.has(id)).length
+  return count === 0 ? 'none' : count === ids.length ? 'all' : 'some'
+}

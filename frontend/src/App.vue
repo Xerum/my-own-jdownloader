@@ -15,10 +15,11 @@ import ContextMenu from './ContextMenu.vue'
 import LinksDialog from './LinksDialog.vue'
 import ItemDialogs from './ItemDialogs.vue'
 import VariantDialog from './VariantDialog.vue'
-import { actionError, changeTick, movedTick, choosingFolder, renaming } from './itemActions'
+import { actionError, changeTick, menu, movedTick, choosingFolder, renaming } from './itemActions'
 import { useDownloads } from './useDownloads'
 import { Download, FileDown, Link2, Settings } from '@lucide/vue'
-import { expandedDownloads, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
+import { clearDownloadMarks, expandedDownloads, markPackages, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
+import DownloadSelectAll from './DownloadSelectAll.vue'
 import { useFileDrop } from './useFileDrop'
 import ToastHost from './ToastHost.vue'
 import { progress, showError } from './toast'
@@ -48,13 +49,14 @@ void loadPlugins()
 const { snapshot, snapshots, connected } = useDownloads()
 
 const packages = computed(() => snapshot.value?.packages ?? [])
+const packageIds = computed(() => packages.value.map((p) => p.uuid))
 
 // The overview: one section per device, offline devices with a note instead of a list.
 const sections = computed(() =>
   devices.value.map((d) => {
     const snap = snapshots.value[d.id]
     const list = snap?.packages ?? []
-    return { device: d, loaded: Boolean(snap), packages: list, speed: d.online === false ? 0 : (snap?.totalSpeed ?? 0), bytesLoaded: list.reduce((sum, p) => sum + p.bytesLoaded, 0), bytesTotal: list.reduce((sum, p) => sum + p.bytesTotal, 0) }
+    return { device: d, loaded: Boolean(snap), packages: list, ids: list.map((p) => p.uuid), speed: d.online === false ? 0 : (snap?.totalSpeed ?? 0), bytesLoaded: list.reduce((sum, p) => sum + p.bytesLoaded, 0), bytesTotal: list.reduce((sum, p) => sum + p.bytesTotal, 0) }
   })
 )
 // What the status bar shows in the overview: the sum of all devices.
@@ -98,11 +100,28 @@ watch([tab, selected, settingsSection, settingsOpen, phone], () => {
   const hash = formatHash(tab.value, selected.value, phone.value && !settingsOpen.value ? undefined : settingsSection.value)
   if (location.hash !== hash) location.hash = hash
 })
-// A click anywhere else (not on a link, a package header or the context menu) clears the marks.
+// A click anywhere else (not on a link, a package header, an "All" checkbox or the context menu) clears the marks.
 const onDocumentClick = (e: MouseEvent) => {
-  if ((e.target as HTMLElement | null)?.closest('.link, .package > .head, .menu')) return
-  if (selectedDownloadLinks.value.size) selectedDownloadLinks.value = new Set()
-  if (selectedDownloadPackages.value.size) selectedDownloadPackages.value = new Set()
+  if ((e.target as HTMLElement | null)?.closest('.link, .package > .head, .menu, .select-all')) return
+  clearDownloadMarks()
+}
+// In the download list: ctrl/cmd+A marks all packages (in the overview: those of the device whose packages are
+// marked, or of the only device with packages), Escape clears the marks. Not while typing or a dialog is open.
+const onKeyDown = (e: KeyboardEvent) => {
+  if (tab.value !== 'downloads' || e.defaultPrevented || e.isComposing || document.querySelector('.overlay')) return
+  if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]')) return
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') {
+    e.preventDefault()
+    if (!showingAll.value) {
+      if (packageIds.value.length) markPackages('', packageIds.value)
+      return
+    }
+    const withPackages = sections.value.filter((s) => s.device.online !== false && s.ids.length)
+    const section = withPackages.find((s) => s.device.id === selectedPackagesDevice.value && selectedDownloadPackages.value.size) ?? (withPackages.length === 1 ? withPackages[0] : undefined)
+    if (section) markPackages(section.device.id, section.ids)
+  } else if (e.key === 'Escape' && !menu.value) {
+    clearDownloadMarks()
+  }
 }
 // The browser's own context menu is replaced by ours; it stays in text fields (copy / paste), on the settings
 // pages (save a link as) and on elements marked .allow-contextmenu (e.g. the captcha picture, save image as).
@@ -112,10 +131,12 @@ const onContextMenu = (e: MouseEvent) => {
 onMounted(() => {
   document.addEventListener('click', onDocumentClick)
   document.addEventListener('contextmenu', onContextMenu)
+  window.addEventListener('keydown', onKeyDown)
 })
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('contextmenu', onContextMenu)
+  window.removeEventListener('keydown', onKeyDown)
 })
 
 const onHashChange = () => {
@@ -301,6 +322,7 @@ const dragFor = (device: string) => {
         <h2 class="device-head" :class="{ offline: s.device.online === false }">
           <ServerOff v-if="s.device.online === false" :size="16" />
           <span class="name">{{ s.device.name }}</span>
+          <DownloadSelectAll v-if="s.device.online !== false && s.loaded && s.packages.length" :device="s.device.id" :ids="s.ids" />
           <span v-if="s.device.online === false" class="state">offline</span>
           <span v-else-if="s.packages.length" class="totals">{{ s.packages.length }} package{{ s.packages.length === 1 ? '' : 's' }} · {{ formatBytes(s.bytesLoaded) }} / {{ formatBytes(s.bytesTotal) }}<template v-if="s.speed > 0"> · {{ formatSpeed(s.speed) }}</template></span>
         </h2>
@@ -312,6 +334,7 @@ const dragFor = (device: string) => {
           :key="p.uuid"
           :pkg="p"
           :device="s.device.id"
+          :siblings="s.ids"
           :class="[dragFor(s.device.id).dropClass(p.uuid), { dragging: dragFor(s.device.id).dragId.value === p.uuid, 'drop-into': dragFor(s.device.id).mergeId.value === p.uuid }]"
           @dragstart="dragFor(s.device.id).onDragStart(p.uuid, $event)"
           @dragover="dragFor(s.device.id).onDragOver(p.uuid, $event)"
@@ -327,11 +350,13 @@ const dragFor = (device: string) => {
         <p>The download list is empty</p>
         <span>Move links from the linkgrabber to see them here.</span>
       </div>
+      <div v-else class="list-tools"><DownloadSelectAll device="" :ids="packageIds" /></div>
 
       <PackageCard
         v-for="p in packages"
         :key="p.uuid"
         :pkg="p"
+        :siblings="packageIds"
         :class="[dragFor(currentDevice).dropClass(p.uuid), { dragging: dragFor(currentDevice).dragId.value === p.uuid, 'drop-into': dragFor(currentDevice).mergeId.value === p.uuid }]"
         @dragstart="dragFor(currentDevice).onDragStart(p.uuid, $event)"
         @dragover="dragFor(currentDevice).onDragOver(p.uuid, $event)"

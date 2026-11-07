@@ -149,6 +149,8 @@ h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 .device-head .totals, .device-head .state { margin-left: auto; font-size: 0.85rem; font-weight: 400; color: var(--muted); }
 .device-head .state { text-transform: uppercase; letter-spacing: 0.03em; }
 .device-head.offline { color: var(--muted); }
+/* Above the download list: the "All" checkbox. */
+.list-tools { display: flex; align-items: center; min-height: 24px; padding: 0 2px; }
 .package { min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
 .package.disabled { opacity: 0.55; }
 .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }

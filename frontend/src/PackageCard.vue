@@ -3,7 +3,7 @@ import { toneIcon } from './iconTone'
 import { withDevice } from './devices'
 import { Check, ChevronRight, Clock, Download, Hourglass, Package, PackageOpen, SkipForward, TriangleAlert, Folder, Gauge, GripVertical, HardDrive, Link2, PowerOff, OctagonPause, Zap } from '@lucide/vue'
 import { vMarquee } from './marquee'
-import { expandedDownloads, linkAnchor, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
+import { expandedDownloads, linkAnchor, markPackages, packageAnchor, saveExpandedDownloads, selectedDownloadLinks, selectedDownloadPackages, selectedPackagesDevice } from './expandedState'
 import { showError } from './toast'
 import PriorityMark from './PriorityMark.vue'
 import { clearHovered, changeTick, menuOn, openMenu, setHovered, setMarked, type LinkDetails, type Target } from './itemActions'
@@ -15,7 +15,8 @@ import { useDragReorder } from './dragReorder'
 import { addPending, reorderOp, withPending } from './pendingOps'
 import type { DownloadLink, DownloadPackage, Extraction } from './types'
 
-const props = defineProps<{ pkg: DownloadPackage; device?: string }>()
+// siblings: the package ids of this list in their order (for shift+click ranges).
+const props = defineProps<{ pkg: DownloadPackage; device?: string; siblings?: number[] }>()
 
 const expanded = ref(expandedDownloads.has(props.pkg.uuid))
 const packageDraggable = ref(false)
@@ -53,15 +54,32 @@ const onLinkContext = (e: MouseEvent, l: DownloadLink) => {
   openMenu(e, linkTarget(l))
 }
 
-// Ctrl/Cmd+click marks the package (for merging) instead of expanding it; a plain click clears the marks.
+// Ctrl/Cmd+click marks the package (for merging) instead of expanding it; shift+click marks the range of packages
+// from the last ctrl+click (ctrl+shift adds the range to the marks); a plain click clears the marks.
 const onHeadClick = (e: MouseEvent) => {
+  // Marks of another device's list are dropped: an action only ever goes to one device.
+  const current = () => (selectedPackagesDevice.value === deviceKey.value ? selectedDownloadPackages.value : [])
+  if (e.shiftKey) {
+    window.getSelection()?.removeAllRanges()
+    const ids = props.siblings ?? [props.pkg.uuid]
+    const anchor = packageAnchor.value
+    const from = anchor && anchor.device === deviceKey.value ? ids.indexOf(anchor.package) : -1
+    const to = ids.indexOf(props.pkg.uuid)
+    const next = new Set(e.ctrlKey || e.metaKey ? current() : [])
+    if (from === -1 || to === -1) {
+      next.add(props.pkg.uuid)
+      packageAnchor.value = { device: deviceKey.value, package: props.pkg.uuid }
+    } else {
+      for (const id of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) next.add(id)
+    }
+    markPackages(deviceKey.value, next)
+    return
+  }
   if (e.ctrlKey || e.metaKey) {
-    // Marks of another device's list are dropped: an action only ever goes to one device.
-    const next = new Set(selectedPackagesDevice.value === deviceKey.value ? selectedDownloadPackages.value : [])
-    selectedPackagesDevice.value = deviceKey.value
+    const next = new Set(current())
     if (!next.delete(props.pkg.uuid)) next.add(props.pkg.uuid)
-    selectedDownloadPackages.value = next
-    if (selectedDownloadLinks.value.size) selectedDownloadLinks.value = new Set()
+    packageAnchor.value = { device: deviceKey.value, package: props.pkg.uuid }
+    markPackages(deviceKey.value, next)
     return
   }
   if (selectedDownloadPackages.value.size) selectedDownloadPackages.value = new Set()
