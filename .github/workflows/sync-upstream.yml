@@ -1,0 +1,35 @@
+# Fork-only workflow: merges bennyborn/my-own-jdownloader master into this fork every night
+# and triggers the "Fork image" workflow when something new came in.
+# Pushes made with GITHUB_TOKEN don't trigger "on: push", hence the explicit dispatch.
+# Fails (and GitHub sends a mail) on merge conflicts or when upstream changes workflow files,
+# then sync manually: git pull upstream master in C:\git\my-own-jdownloader, resolve, push.
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    name: Merge upstream and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream master
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          resp=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/merge-upstream" -f branch=master)
+          echo "${resp}"
+          echo "merge_type=$(jq -r .merge_type <<< "${resp}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Trigger image build
+        if: steps.merge.outputs.merge_type != 'none'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run fork-image.yml --repo "${GITHUB_REPOSITORY}" --ref master
