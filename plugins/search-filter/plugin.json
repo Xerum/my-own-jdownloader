@@ -1,0 +1,8 @@
+{
+  "id": "search-filter",
+  "name": "Search filter",
+  "description": "Adds a text filter above the download list and the linkgrabber list. Type to show only matching names, or click the circle icon to hide matches instead.",
+  "version": "1.0.0",
+  "ui": "ui.js",
+  "settings": []
+}

@@ -11,6 +11,7 @@ import { addPending, reorderOp, withPending, type PendingOp } from './pendingOps
 import { expandedGrabber } from './expandedState'
 import { formatBytes } from './format'
 import PackageSlot from './PackageSlot.vue'
+import { matchesActiveFilters } from './plugins'
 import LoadingState from './LoadingState.vue'
 import { showError } from './toast'
 import PriorityMark from './PriorityMark.vue'
@@ -84,7 +85,7 @@ const matchesExt = (l: GrabberLink) => !extFilter.value.size || extFilter.value.
 // Packages reduced to the links that pass the filters (empty packages are hidden).
 const packages = computed(() =>
   livePackages.value
-    .map((p) => ({ ...p, links: p.links.filter((l) => matchesHost(l) && matchesExt(l)) }))
+    .map((p) => ({ ...p, links: p.links.filter((l) => matchesHost(l) && matchesExt(l) && matchesActiveFilters('linkgrabber', l.name)) }))
     .filter((p) => p.links.length)
 )
 const visibleLinks = computed(() => packages.value.flatMap((p) => p.links))

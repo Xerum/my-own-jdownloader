@@ -5,6 +5,7 @@ import { Clock, Download, Link2, Package, Plus, ShieldCheck, Snail } from '@luci
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { formatBytes, formatLongEta, formatSpeed } from './format'
 import SpeedGraph, { type SpeedSample } from './SpeedGraph.vue'
+import SpeedLimitDialog from './SpeedLimitDialog.vue'
 import type { DownloadsSnapshot } from './types'
 import type { CaptchaJob } from './useCaptchas'
 
@@ -90,6 +91,10 @@ let limitTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => (limitTimer = setInterval(() => !document.hidden && loadLimits(), 60_000)))
 onUnmounted(() => clearInterval(limitTimer))
 
+// Lets the speed limit be adjusted on the fly, only for a specific device (never in the "all devices" overview).
+const limitDialogOpen = ref(false)
+const onLimitSaved = (speedLimit: number) => { jdLimits.value = { ...jdLimits.value, speedLimit } }
+
 const totals = computed(() => {
   const packages = props.snapshot?.packages ?? []
   const total = packages.reduce((sum, p) => sum + p.bytesTotal, 0)
@@ -123,7 +128,8 @@ const totals = computed(() => {
         <div>
           <dt>Speed</dt>
           <dd>
-            {{ formatSpeed(totals.speed) }}
+            <button v-if="device" type="button" class="speed" title="Adjust speed limit" @click="limitDialogOpen = true">{{ formatSpeed(totals.speed) }}</button>
+            <template v-else>{{ formatSpeed(totals.speed) }}</template>
             <span v-if="paused" class="snail" :title="`Paused: JDownloader is limited to ${formatSpeed(limit)}`"><Snail :size="15" /></span>
             <span class="dim eta" title="Finished in"><Clock :size="13" />{{ formatLongEta(totals.eta) }}</span>
           </dd>
@@ -135,6 +141,7 @@ const totals = computed(() => {
       <span class="dot" :class="{ on: connected }" :title="connected ? 'connected' : 'disconnected'" />
     </div>
   </footer>
+  <SpeedLimitDialog v-if="device" v-model="limitDialogOpen" :device="device" :speed-limit="jdLimits.speedLimit" @saved="onLimitSaved" />
 </template>
 
 <style scoped>
@@ -165,6 +172,8 @@ dl { display: flex; flex: 1; gap: 28px; margin: 0; white-space: nowrap; }
 dl div { display: flex; flex-direction: column; }
 dt { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
 dd { display: flex; align-items: center; gap: 10px; margin: 0; font-variant-numeric: tabular-nums; }
+.speed { padding: 0; background: none; border: 0; color: inherit; font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+.speed:hover { text-decoration: underline; }
 .snail { display: inline-flex; color: var(--muted); }
 .icons span { display: inline-flex; align-items: center; gap: 4px; }
 .icons svg { color: var(--muted); }

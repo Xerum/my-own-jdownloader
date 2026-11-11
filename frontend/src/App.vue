@@ -31,7 +31,8 @@ import LoadingState from './LoadingState.vue'
 import NotifyToggle from './NotifyToggle.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import SettingsView from './SettingsView.vue'
-import { loadPlugins } from './plugins'
+import { loadPlugins, matchesActiveFilters } from './plugins'
+import ToolbarSlot from './ToolbarSlot.vue'
 import { phone, SECTIONS, settingsOpen, settingsSection } from './settings'
 import { backendUpdateAvailable, useBackendUpdate } from './backendUpdate'
 import { notifyNewCaptchas } from './useNotifications'
@@ -49,14 +50,27 @@ void loadPlugins()
 const { snapshot, snapshots, connected } = useDownloads()
 
 const packages = computed(() => snapshot.value?.packages ?? [])
-const packageIds = computed(() => packages.value.map((p) => p.uuid))
+// What the list actually renders: the filter only hides cards, it never changes the totals above.
+const visiblePackages = computed(() => packages.value.filter((p) => matchesActiveFilters('downloads', p.name)))
+// Marking (All, Ctrl+A, shift+click ranges) acts on the rendered packages only, so a filter narrows it too.
+const packageIds = computed(() => visiblePackages.value.map((p) => p.uuid))
 
 // The overview: one section per device, offline devices with a note instead of a list.
 const sections = computed(() =>
   devices.value.map((d) => {
     const snap = snapshots.value[d.id]
     const list = snap?.packages ?? []
-    return { device: d, loaded: Boolean(snap), packages: list, ids: list.map((p) => p.uuid), speed: d.online === false ? 0 : (snap?.totalSpeed ?? 0), bytesLoaded: list.reduce((sum, p) => sum + p.bytesLoaded, 0), bytesTotal: list.reduce((sum, p) => sum + p.bytesTotal, 0) }
+    const visible = list.filter((p) => matchesActiveFilters('downloads', p.name))
+    return {
+      device: d,
+      loaded: Boolean(snap),
+      packages: list,
+      visible,
+      ids: visible.map((p) => p.uuid),
+      speed: d.online === false ? 0 : (snap?.totalSpeed ?? 0),
+      bytesLoaded: list.reduce((sum, p) => sum + p.bytesLoaded, 0),
+      bytesTotal: list.reduce((sum, p) => sum + p.bytesTotal, 0)
+    }
   })
 )
 // What the status bar shows in the overview: the sum of all devices.
@@ -313,6 +327,11 @@ const dragFor = (device: string) => {
   </header>
   <DeviceDialog v-model="devicesOpen" />
 
+  <div class="toolbar-band">
+    <ToolbarSlot v-if="tab === 'downloads'" name="downloads-toolbar" scope="downloads" />
+    <ToolbarSlot v-if="tab === 'grabber'" name="linkgrabber-toolbar" scope="linkgrabber" />
+  </div>
+
   <main>
     <Transition name="tab" mode="out-in" @after-leave="toTop">
     <div :key="tab" class="view">
@@ -329,8 +348,9 @@ const dragFor = (device: string) => {
         <p v-if="s.device.online === false" class="empty">This device is offline.</p>
         <LoadingState v-else-if="!s.loaded" variant="inline" text="Loading…" />
         <p v-else-if="!s.packages.length" class="empty">The download list is empty.</p>
+        <p v-else-if="!s.visible.length" class="empty">No matches.</p>
         <PackageCard
-          v-for="p in s.packages"
+          v-for="p in s.visible"
           :key="p.uuid"
           :pkg="p"
           :device="s.device.id"
@@ -351,9 +371,10 @@ const dragFor = (device: string) => {
         <span>Move links from the linkgrabber to see them here.</span>
       </div>
       <div v-else class="list-tools"><DownloadSelectAll device="" :ids="packageIds" /></div>
+      <p v-if="snapshot && packages.length && visiblePackages.length === 0" class="empty-big">No matches.</p>
 
       <PackageCard
-        v-for="p in packages"
+        v-for="p in visiblePackages"
         :key="p.uuid"
         :pkg="p"
         :siblings="packageIds"

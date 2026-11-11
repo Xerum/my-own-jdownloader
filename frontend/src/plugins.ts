@@ -45,6 +45,17 @@ export const blockEntries = shallowRef<Record<string, BlockEntry[]>>({})
 // Only blocks of plugins that are switched on and set up are shown.
 export const entriesOf = (name: string): BlockEntry[] => (blockEntries.value[name] ?? []).filter((e) => activeIds.value.has(e.pluginId))
 
+// --- List filters -------------------------------------------------------------------------------------------
+// Like blocks, but a plugin contributes a predicate instead of UI: a link/package is shown in a list only if
+// every active plugin's predicate for that list's scope returns true (no registered predicate: nothing hidden).
+export interface ListFilterEntry {
+  pluginId: string
+  predicate: (name: string) => boolean
+}
+export const listFilterEntries = shallowRef<Record<string, ListFilterEntry[]>>({})
+export const matchesActiveFilters = (scope: string, name: string): boolean =>
+  (listFilterEntries.value[scope] ?? []).filter((e) => activeIds.value.has(e.pluginId)).every((e) => e.predicate(name))
+
 const loadedUi = new Set<string>()
 const loadUi = async (p: PluginInfo): Promise<void> => {
   if (!p.ui || loadedUi.has(p.id)) return
@@ -58,6 +69,11 @@ const loadUi = async (p: PluginInfo): Promise<void> => {
         const next = { ...blockEntries.value }
         next[name] = [...(next[name] ?? []).filter((e) => !(e.pluginId === p.id && e.mode === mode)), { pluginId: p.id, component: markRaw(component), mode }]
         blockEntries.value = next
+      },
+      registerListFilter: (scope: string, predicate: (name: string) => boolean) => {
+        const next = { ...listFilterEntries.value }
+        next[scope] = [...(next[scope] ?? []).filter((e) => e.pluginId !== p.id), { pluginId: p.id, predicate }]
+        listFilterEntries.value = next
       }
     })
   } catch (e) {
