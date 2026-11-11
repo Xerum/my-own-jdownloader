@@ -100,6 +100,17 @@ watch(packages, (list) => {
   }
   if (gone.some((id) => selectedDownloadPackages.value.has(id))) selectedDownloadPackages.value = new Set([...selectedDownloadPackages.value].filter((id) => !gone.includes(id)))
 })
+// A filter only hides cards, their marks would stay. The context menu acts on all marked packages/links, so an action
+// (e.g. remove with files) would also hit what you can't see: drop the marks of hidden packages. Link marks can span
+// packages, so they are cleared as soon as another package gets hidden.
+const hiddenPackageIds = computed(
+  () => new Set([...packages.value, ...sections.value.flatMap((s) => s.packages)].filter((p) => !matchesActiveFilters('downloads', p.name)).map((p) => p.uuid))
+)
+watch(hiddenPackageIds, (hidden, before) => {
+  const marked = selectedDownloadPackages.value
+  if ([...marked].some((id) => hidden.has(id))) selectedDownloadPackages.value = new Set([...marked].filter((id) => !hidden.has(id)))
+  if (selectedDownloadLinks.value.size && [...hidden].some((id) => !before?.has(id))) selectedDownloadLinks.value = new Set()
+})
 const tabFromHash = (): Tab => parseHash().tab
 const tab = ref<Tab>(tabFromHash())
 const devicesOpen = ref(false)
